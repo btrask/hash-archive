@@ -66,6 +66,7 @@ OBJECTS := $(BUILD_DIR)/src/server.o
 
 STATIC_LIBS += $(DEPS_DIR)/libasync/build/libasync.a
 CFLAGS += -I$(DEPS_DIR)/libasync/include
+CFLAGS += -iquote $(DEPS_DIR)/libasync/deps
 
 # TODO: Switch to LevelDB as soon as we can figure out how to make it work.
 STATIC_LIBS += $(DEPS_DIR)/libkvstore/build/libkvstore.a
