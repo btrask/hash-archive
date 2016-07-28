@@ -10,6 +10,7 @@ CFLAGS += -std=c99 -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=500
 CFLAGS += -g -fno-omit-frame-pointer
 CFLAGS += -fstack-protector
 CFLAGS += -I$(DEPS_DIR)
+CFLAGS += -DLIBCO_MP
 
 
 WARNINGS := -Werror -Wall -Wextra -Wunused -Wuninitialized -Wvla
@@ -68,6 +69,14 @@ STATIC_LIBS += $(DEPS_DIR)/libasync/build/libasync.a
 CFLAGS += -I$(DEPS_DIR)/libasync/include
 CFLAGS += -iquote $(DEPS_DIR)/libasync/deps
 
+STATIC_LIBS += $(DEPS_DIR)/libasync/deps/libressl-portable/tls/.libs/libtls.a
+STATIC_LIBS += $(DEPS_DIR)/libasync/deps/libressl-portable/ssl/.libs/libssl.a
+STATIC_LIBS += $(DEPS_DIR)/libasync/deps/libressl-portable/crypto/.libs/libcrypto.a
+CFLAGS += -I$(DEPS_DIR)/libasync/deps/libressl-portable/include
+
+STATIC_LIBS += $(DEPS_DIR)/libasync/deps/uv/.libs/libuv.a
+LIBS += -lpthread
+
 # TODO: Switch to LevelDB as soon as we can figure out how to make it work.
 STATIC_LIBS += $(DEPS_DIR)/libkvstore/build/libkvstore.a
 #STATIC_LIBS += $(DEPS_DIR)/libkvstore/deps/leveldb/libleveldb.a
@@ -80,7 +89,7 @@ all: $(BUILD_DIR)/hash-archive
 
 $(BUILD_DIR)/hash-archive: $(OBJECTS) $(STATIC_LIBS)
 	@- mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(WARNINGS) $(OBJECTS) $(STATIC_LIBS) -o $@
+	$(CC) $(CFLAGS) $(WARNINGS) $(OBJECTS) $(STATIC_LIBS) $(LIBS) -o $@
 
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c | libasync libkvstore
 	@- mkdir -p $(dir $@)
