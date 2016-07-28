@@ -10,7 +10,6 @@ CFLAGS += -std=c99 -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=500
 CFLAGS += -g -fno-omit-frame-pointer
 CFLAGS += -fstack-protector
 CFLAGS += -I$(DEPS_DIR)
-CFLAGS += -DLIBCO_MP
 
 
 WARNINGS := -Werror -Wall -Wextra -Wunused -Wuninitialized -Wvla
