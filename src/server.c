@@ -2,15 +2,40 @@
 // MIT licensed (see LICENSE for details)
 
 #include <async/async.h>
+#include <async/http/HTTPServer.h>
+#include "strext.h"
+
+#define SERVER_RAW_ADDR NULL
+#define SERVER_RAW_PORT 8000
+
+static HTTPServerRef server_raw = NULL;
+static HTTPServerRef server_tls = NULL;
+
+static void listener(void *const context, HTTPServerRef const server, HTTPConnectionRef const conn) {
+	HTTPConnectionSendStatus(conn, 200);
+}
 
 static void init(void *ignore) {
-
+	HTTPServerRef server = NULL;
+	int rc;
+	rc = HTTPServerCreate(listener, NULL, &server);
+	if(rc < 0) goto cleanup;
+	rc = HTTPServerListen(server, SERVER_RAW_ADDR, SERVER_RAW_PORT);
+	if(rc < 0) goto cleanup;
+	int const port = SERVER_RAW_PORT;
+	alogf("Hash Archive running at http://localhost:%d/\n", port);
+	server_raw = server; server = NULL;
+cleanup:
+	HTTPServerFree(&server);
+	return;
 }
 static void term(void *ignore) {
-
+	HTTPServerClose(server_raw);
+	HTTPServerClose(server_tls);
 }
 static void cleanup(void *ignore) {
-
+	HTTPServerFree(&server_raw);
+	HTTPServerFree(&server_tls);
 }
 
 int main(void) {

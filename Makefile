@@ -62,7 +62,10 @@ WARNINGS += -Wformat=2
 
 
 
-OBJECTS := $(BUILD_DIR)/src/server.o
+OBJECTS := \
+	$(BUILD_DIR)/src/server.o \
+	$(BUILD_DIR)/src/strext.o
+#	$(BUILD_DIR)/src/Template.o \
 
 
 STATIC_LIBS += $(DEPS_DIR)/libasync/build/libasync.a
