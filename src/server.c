@@ -10,12 +10,52 @@
 #define SERVER_RAW_PORT 8000
 
 #define URI_MAX (1023+1)
+#define USER_AGENT "Hash Archive (https://github.com/btrask/hash-archive)"
 
 typedef char str_t;
 typedef char const *strarg_t;
 
 static HTTPServerRef server_raw = NULL;
 static HTTPServerRef server_tls = NULL;
+
+// TODO: Remember that we should use the archive's URL representation in the DB.
+// http://com,example,www/ or something like that
+
+
+/*static int send_get(strarg_t const URL, HTTPConnectionRef *const out) {
+	HTTPConnectionRef conn = NULL;
+	int rc = 0;
+	rc = rc < 0 ? rc : HTTPConnectionCreateOutgoingSecure(host, 0, NULL, &conn);
+	rc = rc < 0 ? rc : HTTPConnectionWriteRequest(conn, HTTP_GET, path, host);
+	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "User-Agent", USER_AGENT);
+	HTTPConnectionSetKeepAlive(conn, false); // No point.
+	rc = rc < 0 ? rc : HTTPConnectionBeginBody(conn);
+	if(rc < 0) goto cleanup;
+	*out = conn; conn = NULL;
+cleanup:
+	HTTPConnectionFree(&conn);
+	return rc;
+}
+static int reverse_ion_cannon(strarg_t const URL, out) {
+	HTTPConnectionRef conn = NULL;
+	HTTPHeadersRef headers = NULL;
+	strarg_t content_length = NULL;
+	strarg_t content_type = NULL;
+	int status = 0;
+	int rc = 0;
+	rc = send_get(URL, &conn);
+	rc = HTTPConnectionReadResponseStatus(conn, &status);
+	rc = HTTPHeadersCreateFromConnection(conn, &headers);
+	content_length = HTTPHeadersGet(headers, "Content-Length");
+	content_type = HTTPHeadersGet(headers, "Content-Type");
+	for(;;) {
+		uv_buf_t buf[1];
+		rc = HTTPConnectionReadBody(conn, buf);
+		if(rc < 0) goto cleanup;
+		if(0 == buf->len) break;
+		// TODO: hashing...
+	}
+}*/
 
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
