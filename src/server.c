@@ -5,6 +5,7 @@
 #include <async/async.h>
 #include <async/http/HTTPServer.h>
 #include "strext.h"
+#include "hasher.h"
 
 #define SERVER_RAW_ADDR NULL
 #define SERVER_RAW_PORT 8000
@@ -22,40 +23,58 @@ static HTTPServerRef server_tls = NULL;
 // http://com,example,www/ or something like that
 
 
-/*static int send_get(strarg_t const URL, HTTPConnectionRef *const out) {
+static int send_get(strarg_t const URL, HTTPConnectionRef *const out) {
 	HTTPConnectionRef conn = NULL;
+	str_t host[255+1]; host[0] = '\0';
+	str_t path[URI_MAX]; path[0] = '\0';
 	int rc = 0;
 	rc = rc < 0 ? rc : HTTPConnectionCreateOutgoingSecure(host, 0, NULL, &conn);
 	rc = rc < 0 ? rc : HTTPConnectionWriteRequest(conn, HTTP_GET, path, host);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "User-Agent", USER_AGENT);
 	HTTPConnectionSetKeepAlive(conn, false); // No point.
 	rc = rc < 0 ? rc : HTTPConnectionBeginBody(conn);
+	rc = rc < 0 ? rc : HTTPConnectionEnd(conn);
 	if(rc < 0) goto cleanup;
 	*out = conn; conn = NULL;
 cleanup:
 	HTTPConnectionFree(&conn);
 	return rc;
 }
-static int reverse_ion_cannon(strarg_t const URL, out) {
+static int url_fetch(strarg_t const URL, int *const outstatus, HTTPHeadersRef *const outheaders, hasher_t **const outhasher) {
 	HTTPConnectionRef conn = NULL;
 	HTTPHeadersRef headers = NULL;
-	strarg_t content_length = NULL;
-	strarg_t content_type = NULL;
+	hasher_t *hasher = NULL;
 	int status = 0;
 	int rc = 0;
-	rc = send_get(URL, &conn);
-	rc = HTTPConnectionReadResponseStatus(conn, &status);
-	rc = HTTPHeadersCreateFromConnection(conn, &headers);
-	content_length = HTTPHeadersGet(headers, "Content-Length");
-	content_type = HTTPHeadersGet(headers, "Content-Type");
+
+	rc = rc < 0 ? rc : send_get(URL, &conn);
+	rc = rc < 0 ? rc : HTTPConnectionReadResponseStatus(conn, &status);
+	rc = rc < 0 ? rc : HTTPHeadersCreateFromConnection(conn, &headers);
+	if(rc < 0) goto cleanup;
+
+	rc = hasher_create(HASHER_ALGOS_ALL, &hasher);
+	if(rc < 0) goto cleanup;
 	for(;;) {
 		uv_buf_t buf[1];
 		rc = HTTPConnectionReadBody(conn, buf);
 		if(rc < 0) goto cleanup;
 		if(0 == buf->len) break;
-		// TODO: hashing...
+		rc = hasher_update(hasher, (unsigned char *)buf->base, buf->len);
+		if(rc < 0) goto cleanup;
 	}
-}*/
+	rc = hasher_finish(hasher);
+	if(rc < 0) goto cleanup;
+
+	*outstatus = status; status = 0;
+	*outheaders = headers; headers = NULL;
+	*outhasher = hasher; hasher = NULL;
+
+cleanup:
+	HTTPConnectionFree(&conn);
+	HTTPHeadersFree(&headers);
+	hasher_free(&hasher);
+	return rc;
+}
 
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
