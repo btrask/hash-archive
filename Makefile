@@ -10,7 +10,7 @@ CFLAGS += -std=c99 -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=500
 CFLAGS += -g -fno-omit-frame-pointer
 CFLAGS += -fstack-protector
 CFLAGS += -I$(DEPS_DIR)
-
+CFLAGS += -DHAVE_TIMEGM -DMAP_ANON -I$(DEPS_DIR)/libasync/deps/libressl-portable/include/compat
 
 WARNINGS := -Werror -Wall -Wextra -Wunused -Wuninitialized -Wvla
 
@@ -55,7 +55,8 @@ WARNINGS += -Wformat=2
 OBJECTS := \
 	$(BUILD_DIR)/src/server.o \
 	$(BUILD_DIR)/src/strext.o \
-	$(BUILD_DIR)/src/hasher.o
+	$(BUILD_DIR)/src/hasher.o \
+	$(BUILD_DIR)/src/url.o
 #	$(BUILD_DIR)/src/Template.o \
 
 
