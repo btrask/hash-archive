@@ -61,7 +61,9 @@ static int url_fetch(strarg_t const URL, int *const outstatus, HTTPHeadersRef *c
 		rc = HTTPConnectionReadBody(conn, buf);
 		if(rc < 0) goto cleanup;
 		if(0 == buf->len) break;
+		async_pool_enter(NULL);
 		rc = hasher_update(hasher, (unsigned char *)buf->base, buf->len);
+		async_pool_leave(NULL);
 		if(rc < 0) goto cleanup;
 	}
 	rc = hasher_finish(hasher);
