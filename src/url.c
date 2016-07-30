@@ -75,6 +75,10 @@ static int domain_reverse(char const *const domain, char *const out, size_t cons
 	assert(out);
 	assert(max > 0);
 	if(!domain) return -EINVAL;
+	// TODO:
+	// 1. Silently truncates domains with more than 8 levels
+	// 2. Silently truncates broken domains
+	// 3. Doesn't do much validation.
 	char *d[8] = {};
 	sscanf(domain,
 		SUBDOMAIN_FMT "."
