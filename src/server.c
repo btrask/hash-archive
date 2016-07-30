@@ -6,6 +6,7 @@
 #include <async/http/HTTPServer.h>
 #include "strext.h"
 #include "hasher.h"
+#include "url.h"
 
 #define SERVER_RAW_ADDR NULL
 #define SERVER_RAW_PORT 8000
@@ -25,15 +26,16 @@ static HTTPServerRef server_tls = NULL;
 
 static int send_get(strarg_t const URL, HTTPConnectionRef *const out) {
 	HTTPConnectionRef conn = NULL;
-	str_t host[255+1]; host[0] = '\0';
-	str_t path[URI_MAX]; path[0] = '\0';
+	url_t obj[1];
 	int rc = 0;
-	rc = rc < 0 ? rc : HTTPConnectionCreateOutgoingSecure(host, 0, NULL, &conn);
-	rc = rc < 0 ? rc : HTTPConnectionWriteRequest(conn, HTTP_GET, path, host);
+	rc = url_parse(URL, obj);
+	if(rc < 0) goto cleanup;
+	rc = rc < 0 ? rc : HTTPConnectionCreateOutgoingSecure(obj->host, 0, NULL, &conn);
+	rc = rc < 0 ? rc : HTTPConnectionWriteRequest(conn, HTTP_GET, obj->path, obj->host);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "User-Agent", USER_AGENT);
 	HTTPConnectionSetKeepAlive(conn, false); // No point.
 	rc = rc < 0 ? rc : HTTPConnectionBeginBody(conn);
-	rc = rc < 0 ? rc : HTTPConnectionEnd(conn);
+	rc = rc < 0 ? rc : HTTPConnectionFlush(conn);
 	if(rc < 0) goto cleanup;
 	*out = conn; conn = NULL;
 cleanup:
@@ -105,12 +107,12 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	if(rc < 0) goto cleanup;
 
 	strarg_t const host = HTTPHeadersGet(headers, "host");
-	str_t domain[1023+1]; domain[0] = '\0';
-	if(host) sscanf(host, "%1023[^:]", domain);
+	host_t obj[1];
+	rc = host_parse(host, obj);
 	// TODO: Verify Host header to prevent DNS rebinding.
 
 /*	if(SERVER_PORT_TLS && server != server_tls) {
-		rc = HTTPConnectionSendSecureRedirect(conn, domain, SERVER_PORT_TLS, URI);
+		rc = HTTPConnectionSendSecureRedirect(conn, obj->domain, SERVER_PORT_TLS, URI);
 		goto cleanup;
 	}*/
 
@@ -136,6 +138,18 @@ static void init(void *ignore) {
 	int const port = SERVER_RAW_PORT;
 	alogf("Hash Archive running at http://localhost:%d/\n", port);
 	server_raw = server; server = NULL;
+
+
+
+	{ // TODO: debug
+	int status = 0;
+	HTTPHeadersRef headers = NULL;
+	hasher_t *hasher = NULL;
+	rc = url_fetch("http://localhost:8000/", &status, &headers, &hasher);
+	alogf("got result %s (%d): %d, %s\n", uv_strerror(rc), rc, status, HTTPHeadersGet(headers, "content-type"));
+	}
+
+
 cleanup:
 	HTTPServerFree(&server);
 	return;
