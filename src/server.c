@@ -163,6 +163,7 @@ static void term(void *ignore) {
 static void cleanup(void *ignore) {
 	HTTPServerFree(&server_raw);
 	HTTPServerFree(&server_tls);
+	async_pool_destroy_shared();
 }
 
 int main(void) {
