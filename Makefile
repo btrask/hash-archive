@@ -36,6 +36,9 @@ WARNINGS += -Wno-unused-parameter
 # Seems too noisy for static functions in headers.
 WARNINGS += -Wno-unused-function
 
+# Come on, I'm just not done with that function yet.
+WARNINGS += -Wno-unused-variable
+
 # For OS X.
 WARNINGS += -Wno-deprecated
 
