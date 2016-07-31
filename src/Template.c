@@ -39,7 +39,7 @@ int TemplateCreate(char const *const str, TemplateRef *const out) {
 	size_t size = 0;
 
 	regex_t exp[1];
-	regcomp(exp, "\\{\\{[a-zA-Z0-9]+\\}\\}", REG_EXTENDED);
+	regcomp(exp, "\\{\\{[a-zA-Z0-9-]+\\}\\}", REG_EXTENDED);
 	char const *pos = str;
 	for(;;) {
 		if(t->count >= size) {
@@ -176,18 +176,4 @@ TemplateArgCBs const TemplateStaticCBs = {
 	.lookup = TemplateStaticLookup,
 	.free = NULL,
 };
-
-
-/*#include "../../deps/cmark/src/houdini.h"
-#include "../../deps/cmark/src/buffer.h"
-
-// HACK
-extern cmark_mem DEFAULT_MEM_ALLOCATOR;
-
-char *htmlenc(char const *const str) {
-	if(!str) return NULL;
-	cmark_strbuf out = CMARK_BUF_INIT(&DEFAULT_MEM_ALLOCATOR);
-	houdini_escape_html(&out, (uint8_t const *)str, strlen(str));
-	return (char *)cmark_strbuf_detach(&out);
-}*/
 

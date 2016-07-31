@@ -26,5 +26,3 @@ typedef struct {
 } TemplateStaticArg;
 extern TemplateArgCBs const TemplateStaticCBs;
 
-//char *htmlenc(char const *const str);
-

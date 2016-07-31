@@ -7,6 +7,7 @@
 #include "strext.h"
 #include "hasher.h"
 #include "url.h"
+#include "Template.h"
 
 #define SERVER_RAW_ADDR NULL
 #define SERVER_RAW_PORT 8000
@@ -80,11 +81,38 @@ cleanup:
 	return rc;
 }
 
+static TemplateRef index = NULL;
+
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	if(0 != uripathcmp(URI, "/", NULL)) return -1;
 
-	return 200;
+	if(!index) {
+		int rc = TemplateCreateFromPath("/home/user/Code/hash-archive/templates/index.html", &index);
+		if(rc < 0) return HTTPError(rc);
+	}
+
+	TemplateStaticArg args[] = {
+		{ "web-url-example", "" },
+		{ "hash-uri-example", "" },
+		{ "named-info-example", "" },
+		{ "multihash-example", "" },
+		{ "prefix-example", "" },
+		{ "ssb-example", "" },
+		{ "examples", "" },
+		{ "recent-list", "" },
+		{ "critical-list", "" },
+		{ NULL, NULL },
+	};
+	HTTPConnectionWriteResponse(conn, 200, "OK");
+	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
+	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
+	HTTPConnectionBeginBody(conn);
+	TemplateWriteHTTPChunk(index, &TemplateStaticCBs, &args, conn);
+	HTTPConnectionWriteChunkEnd(conn);
+	HTTPConnectionEnd(conn);
+
+	return 0;
 }
 
 static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef const conn) {
