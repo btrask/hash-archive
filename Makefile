@@ -56,8 +56,8 @@ OBJECTS := \
 	$(BUILD_DIR)/src/server.o \
 	$(BUILD_DIR)/src/strext.o \
 	$(BUILD_DIR)/src/hasher.o \
-	$(BUILD_DIR)/src/url.o
-#	$(BUILD_DIR)/src/Template.o \
+	$(BUILD_DIR)/src/url.o \
+	$(BUILD_DIR)/src/Template.o
 
 
 STATIC_LIBS += $(DEPS_DIR)/libasync/build/libasync.a
