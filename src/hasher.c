@@ -42,7 +42,7 @@ void hasher_free(hasher_t **const hasherptr) {
 	if(!hasher) return;
 	hasher->flags = 0;
 #define XX(val, name, len) \
-	free(&hasher->state[(val)]); hasher->state[(val)] = NULL;
+	free(hasher->state[(val)]); hasher->state[(val)] = NULL;
 	HASHER_ALGOS(XX)
 #undef XX
 	free(hasher); hasher = NULL;
