@@ -35,7 +35,7 @@ static int send_get(strarg_t const URL, HTTPConnectionRef *const out) {
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "User-Agent", USER_AGENT);
 	HTTPConnectionSetKeepAlive(conn, false); // No point.
 	rc = rc < 0 ? rc : HTTPConnectionBeginBody(conn);
-	rc = rc < 0 ? rc : HTTPConnectionFlush(conn);
+	rc = rc < 0 ? rc : HTTPConnectionEnd(conn);
 	if(rc < 0) goto cleanup;
 	*out = conn; conn = NULL;
 cleanup:
