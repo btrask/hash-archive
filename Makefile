@@ -66,6 +66,7 @@ OBJECTS := \
 	$(BUILD_DIR)/src/page_parts.o \
 	$(BUILD_DIR)/src/page_index.o \
 	$(BUILD_DIR)/src/page_history.o \
+	$(BUILD_DIR)/src/page_sources.o \
 	$(BUILD_DIR)/src/fetch.o
 
 

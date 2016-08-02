@@ -35,6 +35,13 @@ static int GET_history(HTTPConnectionRef const conn, HTTPMethod const method, st
 	if('\0' == url[0]) return -1;
 	return HTTPError(page_history(conn, url));
 }
+static int GET_sources(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
+	char hash[1023+1]; hash[0] = '\0';
+	sscanf(URI, "/sources/%1023s", hash);
+	if('\0' == hash[0]) return -1;
+	return HTTPError(page_sources(conn, hash));
+}
 
 static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef const conn) {
 	assert(server);
@@ -70,6 +77,7 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	rc = -1;
 	rc = rc >= 0 ? rc : GET_index(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_history(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : GET_sources(conn, method, URI, headers);
 	if(rc < 0) rc = 404;
 	if(rc > 0) HTTPConnectionSendStatus(conn, rc);
 

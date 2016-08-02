@@ -20,6 +20,8 @@ char *direct_link_html(hash_uri_type const type, strarg_t const URI_unsafe);
 
 int page_index(HTTPConnectionRef const conn);
 int page_history(HTTPConnectionRef const conn, strarg_t const URL);
+int page_sources(HTTPConnectionRef const conn, strarg_t const URI);
+
 
 static void template_load(strarg_t const path, TemplateRef *const out) {
 	// TODO
