@@ -64,7 +64,8 @@ OBJECTS := \
 	$(BUILD_DIR)/src/util/Template.o \
 	$(BUILD_DIR)/src/util/html.o \
 	$(BUILD_DIR)/src/page_parts.o \
-	$(BUILD_DIR)/src/page_index.o
+	$(BUILD_DIR)/src/page_index.o \
+	$(BUILD_DIR)/src/fetch.o
 
 
 STATIC_LIBS += $(DEPS_DIR)/libasync/build/libasync.a

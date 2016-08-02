@@ -2,7 +2,7 @@
 // MIT licensed (see LICENSE for details)
 
 #include <stdbool.h>
-#include <async/http/HTTPServer.h>
+#include <async/http/HTTP.h>
 
 #define URI_MAX (1023+1)
 
