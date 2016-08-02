@@ -74,6 +74,13 @@ ssize_t hex_decode(char const *const str, size_t const len, unsigned char *const
 // hex_decode is intended to reliably parse untrusted input.
 // In particular, it handles odd-length hex strings and non-hex characters.
 
+typedef enum {
+	B64_STD = 0,
+	B64_URL = 1,
+} b64_type;
+size_t b64_encode(b64_type const type, unsigned char const *const buf, size_t const len, char *const out, size_t const max);
+ssize_t b64_decode(char const *const str, size_t const len, unsigned char *const out, size_t const max);
+
 // hasher.c
 enum {
 	HASHER_ALGOS_ALL = UINT64_MAX,

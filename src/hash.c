@@ -218,17 +218,17 @@ int hash_uri_format(hash_uri_t const *const obj, char *const out, size_t const m
 		return snprintf(out, max, "hash://%s/%s", name, hex);
 	} case LINK_NAMED_INFO: {
 		char b64[HASH_DIGEST_MAX*4/3+1+1] = "test";
-		// TODO
+		b64_encode(B64_URL, obj->buf, obj->len, b64, sizeof(b64));
 		return snprintf(out, max, "ni:///%s;%s", name, b64);
 	} case LINK_MULTIHASH: {
 		return snprintf(out, max, "test"); // TODO
 	} case LINK_PREFIX: {
-		char b64[HASH_DIGEST_MAX*4/3+1+1] = "test";
-		// TODO
+		char b64[HASH_DIGEST_MAX*4/3+1+1];
+		b64_encode(B64_STD, obj->buf, obj->len, b64, sizeof(b64));
 		return snprintf(out, max, "%s-%s", name, b64);
 	} case LINK_SSB: {
 		char b64[HASH_DIGEST_MAX*4/3+1+1] = "test";
-		// TODO
+		b64_encode(B64_STD, obj->buf, obj->len, b64, sizeof(b64));
 		return snprintf(out, max, "&%s.%s", b64, name);
 	} case LINK_MAGNET: {
 		char hex[HASH_DIGEST_MAX*2+1];
@@ -291,5 +291,95 @@ ssize_t hex_decode(char const *const str, size_t const len, unsigned char *const
 		out[i] = hi << 4 | lo << 0;
 	}
 	return i;
+}
+
+// Based on:
+// https://en.wikipedia.org/wiki/Base64
+// https://en.wikipedia.org/w/index.php?title=Base64&oldid=731456847
+static bool b64_term(char const c) {
+	return '\0' == c || '=' == c;
+}
+static int b64_char(char const c) {
+	if(c >= 'A' && c <= 'Z') return c-'A'+0;
+	if(c >= 'a' && c <= 'z') return c-'a'+26;
+	if(c >= '0' && c <= '9') return c-'0'+52;
+	if('+' == c || '-' == c) return 62;
+	if('/' == c || '_' == c) return 63;
+	return HASH_EINVAL;
+}
+size_t b64_encode(b64_type const type, unsigned char const *const buf, size_t const len, char *const out, size_t const max) {
+	assert(out);
+	assert(max > 0);
+	assert(buf || 0 == len);
+	static char const *const b64_std =
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz"
+		"0123456789+/";
+	static char const *const b64_url =
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz"
+		"0123456789-_";
+	char const *const map = (B64_URL == type ? b64_url : b64_std);
+	bool const extend = B64_STD == type;
+	size_t i = 0;
+	int b;
+	for(;; i++) {
+		out[i*4+0] = '\0';
+		if(i*4+3+1 >= max) return i*4+0;
+		if(i*3+0 >= len) return i*4+0;
+		b = (buf[i*3+0]&0xfc) >> 2;
+		out[i*4+0] = map[b];
+		b = (buf[i*3+0]&0x03) << 4;
+		out[i*4+1] = map[b];
+		out[i*4+2] = extend ? '=' : '\0';
+		out[i*4+3] = extend ? '=' : '\0';
+		out[i*4+3+1] = '\0';
+		if(i*3+1 >= len) return extend ? i*4+3+1 : i*4+1+1;
+		b |= (buf[i*3+1]&0xf0) >> 4;
+		out[i*4+1] = map[b];
+		b = (buf[i*3+1]&0x0f) << 2;
+		out[i*4+2] = map[b];
+		if(i*3+2 >= len) return extend ? i*4+3+1 : i*4+2+1;
+		b |= (buf[i*3+2]&0xc0) >> 6;
+		out[i*4+2] = map[b];
+		b = (buf[i*3+2]&0x3f) >> 0;
+		out[i*4+3] = map[b];
+	}
+	assert(0);
+	return HASH_EPANIC;
+}
+ssize_t b64_decode(char const *const str, size_t const len, unsigned char *const out, size_t const max) {
+	assert(out);
+	if(!str) return 0;
+	size_t i = 0;
+	int hi, lo;
+	for(;; i++) {
+		if(i*3+0 >= max) return i*3+0;
+		if(i*4+0 >= len || b64_term(str[i*4+0])) return i*3+0;
+		hi = 0;
+		lo = b64_char(str[i*4+0]);
+		if(lo < 0) return lo;
+		// No assignment
+		//if(i*3+0 >= max) return i*3+0;
+		if(i*4+1 >= len || b64_term(str[i*4+1])) return i*3+0;
+		hi = lo;
+		lo = b64_char(str[i*4+1]);
+		if(lo < 0) return lo;
+		out[i*3+0] = hi << 2 | lo >> 4;
+		if(i*3+1 >= max) return i*3+1;
+		if(i*4+2 >= len || b64_term(str[i*4+2])) return i*3+1;
+		hi = lo;
+		lo = b64_char(str[i*4+2]);
+		if(lo < 0) return lo;
+		out[i*3+1] = hi << 4 | lo >> 2;
+		if(i*3+2 >= max) return i*3+2;
+		if(i*4+3 >= len || b64_term(str[i*4+3])) return i*3+2;
+		hi = lo;
+		lo = b64_term(str[i*4+3]);
+		if(lo < 0) return lo;
+		out[i*3+2] = hi << 6 | lo >> 0;
+	}
+	assert(0);
+	return HASH_EPANIC;
 }
 
