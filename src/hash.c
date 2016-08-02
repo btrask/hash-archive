@@ -242,6 +242,7 @@ int hash_uri_normalize(char const *const URI, char *const out, size_t const max)
 	int rc = hash_uri_parse(URI, obj);
 	if(rc < 0) return rc;
 	rc = hash_uri_format(obj, out, max);
+	hash_uri_destroy(obj);
 	if(rc < 0) return rc;
 	return 0;
 }
