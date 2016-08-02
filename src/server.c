@@ -8,19 +8,12 @@
 #include "strext.h"
 #include "hash.h"
 #include "url.h"
-#include "Template.h"
-#include "html.h"
+#include "page.h"
 
 #define SERVER_RAW_ADDR NULL
 #define SERVER_RAW_PORT 8000
 
-#define URI_MAX (1023+1)
 #define USER_AGENT "Hash Archive (https://github.com/btrask/hash-archive)"
-
-#define assertf(x, ...) assert(x) // TODO
-
-typedef char str_t;
-typedef char const *strarg_t;
 
 static HTTPServerRef server_raw = NULL;
 static HTTPServerRef server_tls = NULL;
@@ -85,122 +78,11 @@ cleanup:
 	return rc;
 }
 
-static char *link_html(hash_uri_type const t, strarg_t const URI_unsafe) {
-	char *r = NULL;
-	char *escaped = html_encode(URI_unsafe);
-	if(!escaped) return NULL;
-	switch(t) {
-	case LINK_NONE: r = aasprintf(
-		"<span>%s</span>", escaped); break;
-	case LINK_RAW: r = aasprintf(
-		"<a href=\"%s\">%s</a>", escaped, escaped); break;
-	case LINK_WEB_URL: r = aasprintf(
-		"<a href=\"/history/%s\">%s</a>"
-		"<sup>[<a href=\"%s\" rel=\"nofollow\" "
-			"target=\"_blank\">^</a>]</sup>",
-		escaped, escaped, escaped); break;
-	case LINK_HASH_URI:
-	case LINK_NAMED_INFO:
-	case LINK_MAGNET: r = aasprintf(
-		"<a href=\"/sources/%s\">%s</a>"
-		"<sup>[<a href=\"%s\" rel=\"nofollow\" "
-			"target=\"_blank\">#</a>]</sup>",
-		escaped, escaped, escaped); break;
-	case LINK_MULTIHASH:
-	case LINK_PREFIX:
-	case LINK_SSB: r = aasprintf(
-		"<a href=\"/sources/%s\">%s</a>", escaped, escaped); break;
-	default: assertf(0, "Unknown link type %d", type);
-	}
-	free(escaped); escaped = NULL;
-	return r;
-}
-static char *item_html(hash_uri_type const type, strarg_t const label_escaped, strarg_t const URI_unsafe, bool const deprecated) {
-	strarg_t const class = deprecated ? "deprecated" : "";
-	char *link = link_html(type, URI_unsafe);
-	if(!link) return NULL;
-	char *r = aasprintf("<li class=\"break %s\">%s%s</li>",
-		class, label_escaped, link);
-	free(link); link = NULL;
-	return r;
-}
-static char *direct_link_html(hash_uri_type const type, strarg_t const URI_unsafe) {
-	char *r = NULL;
-	char *escaped = html_encode(URI_unsafe);
-	if(!escaped) return NULL;
-	switch(type) {
-	case LINK_WEB_URL:
-	case LINK_HASH_URI:
-	case LINK_NAMED_INFO:
-	case LINK_MAGNET: r = aasprintf(
-		"<a href=\"%s\" rel=\"nofollow\">%s</a>",
-		escaped, escaped); break;
-	case LINK_MULTIHASH:
-	case LINK_PREFIX:
-	case LINK_SSB: r = aasprintf("<span>%s</span>", escaped); break;;
-	default: assertf(0, "Unknown link type %d", type);
-	}
-	free(escaped); escaped = NULL;
-	return r;
-}
 
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	if(0 != uripathcmp(URI, "/", NULL)) return -1;
-
-	static TemplateRef index = NULL;
-	if(!index) {
-		int rc = TemplateCreateFromPath("/home/user/Code/hash-archive/templates/index.html", &index);
-		if(rc < 0) return HTTPError(rc);
-	}
-
-	static strarg_t const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
-	static strarg_t const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
-	static char example_named_info[URI_MAX] = "";
-	static char example_prefix[URI_MAX] = "";
-	static char example_multihash[URI_MAX] = "";
-	static char example_ssb[URI_MAX] = "";
-	static char example_magnet[URI_MAX] = "";
-
-	if('\0' == example_magnet[0]) {
-		hash_uri_t obj[1] = {};
-		int rc = hash_uri_parse(example_hash_uri, obj);
-		assert(rc >= 0);
-		rc = hash_uri_variant(obj, LINK_NAMED_INFO, example_named_info, URI_MAX);
-		assert(rc >= 0);
-		rc = hash_uri_variant(obj, LINK_PREFIX, example_prefix, URI_MAX);
-		assert(rc >= 0);
-		rc = hash_uri_variant(obj, LINK_MULTIHASH, example_multihash, URI_MAX);
-		assert(rc >= 0);
-		rc = hash_uri_variant(obj, LINK_SSB, example_ssb, URI_MAX);
-		assert(rc >= 0);
-		rc = hash_uri_variant(obj, LINK_MAGNET, example_magnet, URI_MAX);
-		assert(rc >= 0);
-		hash_uri_destroy(obj);
-	}
-
-	TemplateStaticArg args[] = {
-		{ "web-url-example", link_html(LINK_WEB_URL, example_url) }, // TODO LEAK
-		{ "hash-uri-example", link_html(LINK_HASH_URI, example_hash_uri) },
-		{ "named-info-example", link_html(LINK_NAMED_INFO, example_named_info) },
-		{ "multihash-example", link_html(LINK_MULTIHASH, example_multihash) },
-		{ "prefix-example", link_html(LINK_PREFIX, example_prefix) },
-		{ "ssb-example", link_html(LINK_SSB, example_ssb) },
-		{ "magnet-example", link_html(LINK_MAGNET, example_magnet) },
-		{ "examples", "" },
-		{ "recent-list", "" },
-		{ "critical-list", "" },
-		{ NULL, NULL },
-	};
-	HTTPConnectionWriteResponse(conn, 200, "OK");
-	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
-	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
-	HTTPConnectionBeginBody(conn);
-	TemplateWriteHTTPChunk(index, &TemplateStaticCBs, &args, conn);
-	HTTPConnectionWriteChunkEnd(conn);
-	HTTPConnectionEnd(conn);
-
-	return 0;
+	return HTTPError(page_index(conn));
 }
 
 static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef const conn) {

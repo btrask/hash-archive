@@ -62,7 +62,9 @@ OBJECTS := \
 	$(BUILD_DIR)/src/hash.o \
 	$(BUILD_DIR)/src/url.o \
 	$(BUILD_DIR)/src/Template.o \
-	$(BUILD_DIR)/src/html.o
+	$(BUILD_DIR)/src/html.o \
+	$(BUILD_DIR)/src/page_parts.o \
+	$(BUILD_DIR)/src/page_index.o
 
 
 STATIC_LIBS += $(DEPS_DIR)/libasync/build/libasync.a
