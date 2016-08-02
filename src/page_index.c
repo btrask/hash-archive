@@ -1,8 +1,6 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
-#include <assert.h>
-#include "util/Template.h"
 #include "util/hash.h"
 #include "util/html.h"
 #include "page.h"
@@ -21,8 +19,7 @@ static char example_magnet[URI_MAX] = "";
 int page_index(HTTPConnectionRef const conn) {
 	int rc = 0;
 	if(!index) {
-		rc = TemplateCreateFromPath("/home/user/Code/hash-archive/templates/index.html", &index);
-		assert(rc >= 0);
+		template_load("index.html", &index);
 
 		hash_uri_t obj[1] = {};
 		rc = hash_uri_parse(example_hash_uri, obj);
