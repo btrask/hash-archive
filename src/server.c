@@ -156,22 +156,37 @@ static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, stra
 
 	static strarg_t const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
 	static strarg_t const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
+	static char example_named_info[URI_MAX] = "";
+	static char example_prefix[URI_MAX] = "";
+	static char example_multihash[URI_MAX] = "";
+	static char example_ssb[URI_MAX] = "";
 	static char example_magnet[URI_MAX] = "";
 
-	hash_uri_t obj[1] = {};
-	int rc = hash_uri_parse(example_hash_uri, obj);
-	assert(rc >= 0);
-	rc = hash_uri_variant(obj, LINK_MAGNET, example_magnet, sizeof(example_magnet));
-	assert(rc >= 0);
-	alogf("%s\n", example_magnet);
+	if('\0' == example_magnet[0]) {
+		hash_uri_t obj[1] = {};
+		int rc = hash_uri_parse(example_hash_uri, obj);
+		assert(rc >= 0);
+		rc = hash_uri_variant(obj, LINK_NAMED_INFO, example_named_info, URI_MAX);
+		assert(rc >= 0);
+		rc = hash_uri_variant(obj, LINK_PREFIX, example_prefix, URI_MAX);
+		assert(rc >= 0);
+		rc = hash_uri_variant(obj, LINK_MULTIHASH, example_multihash, URI_MAX);
+		assert(rc >= 0);
+		rc = hash_uri_variant(obj, LINK_SSB, example_ssb, URI_MAX);
+		assert(rc >= 0);
+		rc = hash_uri_variant(obj, LINK_MAGNET, example_magnet, URI_MAX);
+		assert(rc >= 0);
+		hash_uri_destroy(obj);
+	}
 
 	TemplateStaticArg args[] = {
 		{ "web-url-example", link_html(LINK_WEB_URL, example_url) }, // TODO LEAK
-		{ "hash-uri-example", "" },
-		{ "named-info-example", "" },
-		{ "multihash-example", "" },
-		{ "prefix-example", "" },
-		{ "ssb-example", "" },
+		{ "hash-uri-example", link_html(LINK_HASH_URI, example_hash_uri) },
+		{ "named-info-example", link_html(LINK_NAMED_INFO, example_named_info) },
+		{ "multihash-example", link_html(LINK_MULTIHASH, example_multihash) },
+		{ "prefix-example", link_html(LINK_PREFIX, example_prefix) },
+		{ "ssb-example", link_html(LINK_SSB, example_ssb) },
+		{ "magnet-example", link_html(LINK_MAGNET, example_magnet) },
 		{ "examples", "" },
 		{ "recent-list", "" },
 		{ "critical-list", "" },
