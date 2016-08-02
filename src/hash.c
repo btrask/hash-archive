@@ -64,6 +64,7 @@ static int regcomp_err(regex_t *const preg, char const *const regex, int const c
 	assert(0);
 	return HASH_EPANIC;
 }
+// TODO: Copy and paste...
 static int hex_decode_copy(char const *const str, size_t const len, unsigned char **const outbuf, size_t *const outlen) {
 	assert(outbuf);
 	assert(outlen);
@@ -75,6 +76,25 @@ static int hex_decode_copy(char const *const str, size_t const len, unsigned cha
 	if(!buf) rc = HASH_ENOMEM;
 	if(rc < 0) goto cleanup;
 	actual = hex_decode(str, len, buf, max);
+	if(actual < 0) rc = actual;
+	if(rc < 0) goto cleanup;
+	*outbuf = buf; buf = NULL;
+	*outlen = actual; actual = 0;
+cleanup:
+	free(buf); buf = NULL;
+	return rc;
+}
+static int b64_decode_copy(char const *const str, size_t const len, unsigned char **const outbuf, size_t *const outlen) {
+	assert(outbuf);
+	assert(outlen);
+	unsigned char *buf = NULL;
+	ssize_t actual = 0;
+	int rc = 0;
+	size_t const max = (str ? strnlen(str, len) : 0) * 4/3;
+	buf = malloc(MAX(max, 1));
+	if(!buf) rc = HASH_ENOMEM;
+	if(rc < 0) goto cleanup;
+	actual = b64_decode(str, len, buf, max);
 	if(actual < 0) rc = actual;
 	if(rc < 0) goto cleanup;
 	*outbuf = buf; buf = NULL;
@@ -104,7 +124,7 @@ int hash_uri_parse_hash_uri(char const *const URI, hash_uri_t *const out) {
 		if(rc < 0) return rc;
 		initialized = true;
 	}
-	regmatch_t m[3];
+	regmatch_t m[1+2];
 	rc = regexec(re, URI, numberof(m), m, 0);
 	if(0 != rc) return HASH_EPARSE;
 	out->type = LINK_HASH_URI;
@@ -116,7 +136,7 @@ int hash_uri_parse_hash_uri(char const *const URI, hash_uri_t *const out) {
 int hash_uri_parse_prefix(char const *const URI, hash_uri_t *const out) {
 	assert(out);
 	if(!URI) return HASH_EINVAL;
-/*	static regex_t re[1];
+	static regex_t re[1];
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
@@ -124,17 +144,19 @@ int hash_uri_parse_prefix(char const *const URI, hash_uri_t *const out) {
 		if(rc < 0) return rc;
 		initialized = true;
 	}
-	regmatch_t m[3];
+	regmatch_t m[1+2];
 	rc = regexec(re, URI, numberof(m), m, 0);
 	if(0 != rc) return HASH_EPARSE;
 	out->type = LINK_PREFIX;
-	out->algo = hash_algo_parse(out->type, URI+m[1].rm_so, match_len(&m[1]));*/
-	return HASH_EPARSE;
+	out->algo = hash_algo_parse(URI+m[1].rm_so, match_len(&m[1]));
+	rc = b64_decode_copy(URI+m[2].rm_so, match_len(&m[2]), &out->buf, &out->len);
+	if(rc < 0) return rc;
+	return 0;
 }
 int hash_uri_parse_named_info(char const *const URI, hash_uri_t *const out) {
 	assert(out);
 	if(!URI) return HASH_EINVAL;
-/*	static regex_t re[1];
+	static regex_t re[1];
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
@@ -142,12 +164,14 @@ int hash_uri_parse_named_info(char const *const URI, hash_uri_t *const out) {
 		if(rc < 0) return rc;
 		initialized = true;
 	}
-	regmatch_t m[3];
+	regmatch_t m[1+2];
 	rc = regexec(re, URI, numberof(m), m, 0);
 	if(0 != rc) return HASH_EPARSE;
 	out->type = LINK_NAMED_INFO;
-	out->algo = hash_algo_parse(out->type, URI+m[1].rm_so, match_len(&m[1]));*/
-	return HASH_EPARSE;
+	out->algo = hash_algo_parse(URI+m[1].rm_so, match_len(&m[1]));
+	rc = b64_decode_copy(URI+m[2].rm_so, match_len(&m[2]), &out->buf, &out->len);
+	if(rc < 0) return rc;
+	return 0;
 }
 int hash_uri_parse_multihash(char const *const URI, hash_uri_t *const out) {
 	assert(out);
@@ -164,13 +188,15 @@ int hash_uri_parse_multihash(char const *const URI, hash_uri_t *const out) {
 	rc = regexec(re, URI, numberof(m), m, 0);
 	if(0 != rc) return HASH_EPARSE;
 	out->type = LINK_MULTIHASH;
-	out->algo = hash_algo_parse(out->type, URI+m[1].rm_so, match_len(&m[1]));*/
-	return HASH_EPARSE;
+	out->algo = hash_algo_parse(URI+m[1].rm_so, match_len(&m[1]));
+//	rc = b64_decode_copy(URI+m[2].rm_so, match_len(&m[2]), &out->buf, &out->len);
+	if(rc < 0) return rc;*/
+	return -1;
 }
 int hash_uri_parse_ssb(char const *const URI, hash_uri_t *const out) {
 	assert(out);
 	if(!URI) return HASH_EINVAL;
-/*	static regex_t re[1];
+	static regex_t re[1];
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
@@ -178,30 +204,34 @@ int hash_uri_parse_ssb(char const *const URI, hash_uri_t *const out) {
 		if(rc < 0) return rc;
 		initialized = true;
 	}
-	regmatch_t m[3];
+	regmatch_t m[1+2];
 	rc = regexec(re, URI, numberof(m), m, 0);
 	if(0 != rc) return HASH_EPARSE;
 	out->type = LINK_SSB;
-	out->algo = hash_algo_parse(out->type, URI+m[1].rm_so, match_len(&m[1]));*/
-	return HASH_EPARSE;
+	out->algo = hash_algo_parse(URI+m[2].rm_so, match_len(&m[2]));
+	rc = b64_decode_copy(URI+m[1].rm_so, match_len(&m[1]), &out->buf, &out->len);
+	if(rc < 0) return rc;
+	return 0;
 }
 int hash_uri_parse_magnet(char const *const URI, hash_uri_t *const out) {
 	assert(out);
 	if(!URI) return HASH_EINVAL;
-/*	static regex_t re[1];
+	static regex_t re[1];
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
-		rc = regcomp_err(re, "^magnet:.*(:?\\?|&)xt=urn:([a-z0-9]+):([a-z0-9]+)", REG_EXTENDED|REG_ICASE);
+		rc = regcomp_err(re, "^magnet:.*(\\?|&)xt=urn:([a-z0-9]+):([a-z0-9]+)", REG_EXTENDED|REG_ICASE);
 		if(rc < 0) return rc;
 		initialized = true;
 	}
-	regmatch_t m[3];
+	regmatch_t m[1+3];
 	rc = regexec(re, URI, numberof(m), m, 0);
 	if(0 != rc) return HASH_EPARSE;
-	out->type = LINK_SSB;
-	out->algo = hash_algo_parse(out->type, URI+m[1].rm_so, match_len(&m[1]));*/
-	return HASH_EPARSE;
+	out->type = LINK_MAGNET;
+	out->algo = hash_algo_parse(URI+m[2].rm_so, match_len(&m[2]));
+	rc = b64_decode_copy(URI+m[3].rm_so, match_len(&m[3]), &out->buf, &out->len);
+	if(rc < 0) return rc;
+	return 0;
 }
 
 int hash_uri_format(hash_uri_t const *const obj, char *const out, size_t const max) {
