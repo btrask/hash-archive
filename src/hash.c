@@ -268,8 +268,8 @@ size_t hex_encode(unsigned char const *const buf, size_t const len, char *const 
 	assert(buf || 0 == len);
 	char const *const map = "0123456789abcdef";
 	size_t i = 0;
-	for(; i < len; i++) {
-		if(i*2+1 >= max) break;
+	for(; i*2+1+1 < max; i++) {
+		if(i >= len) break;
 		out[i*2+0] = map[buf[i] >> 4 & 0xf];
 		out[i*2+1] = map[buf[i] >> 0 & 0xf];
 	}
