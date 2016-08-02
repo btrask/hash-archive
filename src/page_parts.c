@@ -3,9 +3,9 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include "hash.h"
-#include "html.h"
-#include "strext.h"
+#include "util/hash.h"
+#include "util/html.h"
+#include "util/strext.h"
 #include "page.h"
 
 char *link_html(hash_uri_type const t, strarg_t const URI_unsafe) {

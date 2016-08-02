@@ -2,9 +2,9 @@
 // MIT licensed (see LICENSE for details)
 
 #include <assert.h>
-#include "Template.h"
-#include "hash.h"
-#include "html.h"
+#include "util/Template.h"
+#include "util/hash.h"
+#include "util/html.h"
 #include "page.h"
 
 static TemplateRef index = NULL;

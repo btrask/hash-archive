@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <async/async.h>
 #include <async/http/HTTPServer.h>
-#include "strext.h"
-#include "hash.h"
-#include "url.h"
+#include "util/strext.h"
+#include "util/hash.h"
+#include "util/url.h"
 #include "page.h"
 
 #define SERVER_RAW_ADDR NULL
