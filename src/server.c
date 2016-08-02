@@ -155,16 +155,15 @@ static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, stra
 	}
 
 	static strarg_t const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
-	static strarg_t const example_hash = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
+	static strarg_t const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
+	static char example_magnet[URI_MAX] = "";
 
-	hash_uri_t example_obj[1] = {};
-	int rc = hash_uri_parse(example_hash, example_obj);
-	alogf("parse error: %s\n", hash_strerror(rc));
+	hash_uri_t obj[1] = {};
+	int rc = hash_uri_parse(example_hash_uri, obj);
 	assert(rc >= 0);
-	char tmp[500] = "";
-	hash_uri_format(example_obj, tmp, sizeof(tmp));
-	alogf("test %s\n", tmp);
-	hash_uri_destroy(example_obj);
+	rc = hash_uri_variant(obj, LINK_MAGNET, example_magnet, sizeof(example_magnet));
+	assert(rc >= 0);
+	alogf("%s\n", example_magnet);
 
 	TemplateStaticArg args[] = {
 		{ "web-url-example", link_html(LINK_WEB_URL, example_url) }, // TODO LEAK

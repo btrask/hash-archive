@@ -67,7 +67,7 @@ int hash_uri_parse_ssb(char const *const URI, hash_uri_t *const out);
 int hash_uri_parse_magnet(char const *const URI, hash_uri_t *const out);
 int hash_uri_format(hash_uri_t const *const obj, char *const out, size_t const max);
 int hash_uri_normalize(char const *const URI, char *const out, size_t const max);
-ssize_t hash_uri_variants(hash_uri_t const *const obj, char **const out, size_t const max);
+ssize_t hash_uri_variant(hash_uri_t const *const obj, hash_uri_type const type, char *const out, size_t const max);
 
 size_t hex_encode(unsigned char const *const buf, size_t const len, char *const out, size_t const max);
 ssize_t hex_decode(char const *const str, size_t const len, unsigned char *const out, size_t const max);

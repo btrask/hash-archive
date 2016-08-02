@@ -246,8 +246,13 @@ int hash_uri_normalize(char const *const URI, char *const out, size_t const max)
 	if(rc < 0) return rc;
 	return 0;
 }
-ssize_t hash_uri_variants(hash_uri_t const *const obj, char **const out, size_t const max) {
-	return HASH_EPANIC;
+ssize_t hash_uri_variant(hash_uri_t const *const obj, hash_uri_type const type, char *const out, size_t const max) {
+	hash_uri_t local[1] = { *obj };
+	local->type = type;
+	int rc = hash_uri_format(local, out, max);
+	memset(local, 0, sizeof(*local));
+	if(rc < 0) return rc;
+	return 0;
 }
 
 
