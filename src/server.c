@@ -2,10 +2,11 @@
 // MIT licensed (see LICENSE for details)
 
 #include <assert.h>
+#include <stdlib.h>
 #include <async/async.h>
 #include <async/http/HTTPServer.h>
 #include "strext.h"
-#include "hasher.h"
+#include "hash.h"
 #include "url.h"
 #include "Template.h"
 #include "html.h"
@@ -84,17 +85,6 @@ cleanup:
 	return rc;
 }
 
-typedef enum {
-	LINK_NONE = 0, // Orindary string, not a link
-	LINK_RAW = 1, // A link that shouldn't be transformed
-	LINK_WEB_URL = 2, // http:, https:, ftp:
-	LINK_HASH_URI = 3,
-	LINK_NAMED_INFO = 4,
-	LINK_MULTIHASH = 5,
-	LINK_PREFIX = 6,
-	LINK_SSB = 7,
-	LINK_MAGNET = 8,
-} hash_uri_type;
 static char *link_html(hash_uri_type const t, strarg_t const URI_unsafe) {
 	char *r = NULL;
 	char *escaped = html_encode(URI_unsafe);
@@ -166,6 +156,15 @@ static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, stra
 
 	static strarg_t const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
 	static strarg_t const example_hash = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
+
+	hash_uri_t example_obj[1] = {};
+	int rc = hash_uri_parse(example_hash, example_obj);
+	alogf("parse error: %s\n", hash_strerror(rc));
+	assert(rc >= 0);
+	char tmp[500] = "";
+	hash_uri_format(example_obj, tmp, sizeof(tmp));
+	alogf("test %s\n", tmp);
+	hash_uri_destroy(example_obj);
 
 	TemplateStaticArg args[] = {
 		{ "web-url-example", link_html(LINK_WEB_URL, example_url) }, // TODO LEAK
