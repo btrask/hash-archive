@@ -87,12 +87,4 @@ uint8_t const *hasher_get(hasher_t *const hasher, int const algo) {
 		default: return NULL;
 	}
 }
-size_t hasher_len(int const algo) {
-	switch(algo) {
-#define XX(val, name, len, str) case HASH_ALGO_##name: return (len);
-		HASH_ALGOS(XX)
-#undef XX
-		default: return 0;
-	}
-}
 

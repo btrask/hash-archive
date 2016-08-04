@@ -91,7 +91,6 @@ void hasher_free();
 int hasher_update(hasher_t *const hasher, unsigned char const *const buf, size_t const len);
 int hasher_finish(hasher_t *const hasher);
 uint8_t const *hasher_get(hasher_t *const hasher, int const algo);
-size_t hasher_len(int const algo);
 
 enum {
 	HASH_EINVAL = -EINVAL,
