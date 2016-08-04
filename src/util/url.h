@@ -26,6 +26,8 @@ typedef struct {
 int host_parse(char const *const host, host_t *const out);
 int host_format(host_t const *const host, char *const out, size_t const max);
 
+int url_normalize(char const *const URL, char *const out, size_t const max);
+
 // https://github.com/internetarchive/surt
 // http://crawler.archive.org/articles/user_manual/glossary.html#surt
 int url_normalize_surt(char const *const URL, char *const out, size_t const max);

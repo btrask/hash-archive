@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <async/async.h>
 #include <async/http/HTTPServer.h>
+#include <async/http/QueryString.h>
 #include "util/strext.h"
 #include "util/hash.h"
 #include "util/url.h"
@@ -27,6 +28,52 @@ static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, stra
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	if(0 != uripathcmp(URI, "/", NULL)) return -1;
 	return HTTPError(page_index(conn));
+}
+static int POST_lookup(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_POST != method) return -1;
+	if(0 != uripathcmp(URI, "/lookup", NULL)) return -1;
+
+	char body[URI_MAX * 2];
+	ssize_t len = 0;
+	static strarg_t const fields[] = { "str" };
+	str_t *str = NULL;
+	char parsed[URI_MAX];
+	char loc[URI_MAX];
+	int rc = 0;
+
+	len = HTTPConnectionReadBodyStatic(conn, (unsigned char *)body, sizeof(body)-1);
+	if(len < 0) rc = len;
+	if(rc < 0) goto cleanup;
+	body[len] = '\0';
+
+	QSValuesParse(body, &str, fields, 1);
+	if(!str) {
+		HTTPConnectionSendStatus(conn, 400); // TODO
+		rc = 0;
+		goto cleanup;
+	}
+
+	rc = url_normalize(str, parsed, sizeof(parsed));
+	if(rc >= 0) {
+		snprintf(loc, sizeof(loc), "/history/%s", str);
+		HTTPConnectionSendRedirect(conn, 301, loc);
+		goto cleanup;
+	}
+
+	rc = hash_uri_normalize(str, parsed, sizeof(parsed));
+	if(rc >= 0) {
+		snprintf(loc, sizeof(loc), "/sources/%s", str);
+		HTTPConnectionSendRedirect(conn, 301, loc);
+		goto cleanup;
+	}
+
+	HTTPConnectionSendStatus(conn, 400); // TODO
+	rc = 0;
+
+cleanup:
+	free(str); str = NULL;
+	if(rc < 0) return HTTPError(rc);
+	return 0;
 }
 static int GET_history(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
@@ -76,6 +123,7 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 
 	rc = -1;
 	rc = rc >= 0 ? rc : GET_index(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : POST_lookup(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_history(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_sources(conn, method, URI, headers);
 	if(rc < 0) rc = 404;

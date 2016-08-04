@@ -70,6 +70,15 @@ int host_format(host_t const *const host, char *const out, size_t const max) {
 	return 0;
 }
 
+int url_normalize(char const *const URL, char *const out, size_t const max) {
+	url_t obj[1] = {};
+	int rc = url_parse(URL, obj);
+	if(rc < 0) return rc;
+	rc = url_format(obj, out, max);
+	if(rc < 0) return rc;
+	return 0;
+}
+
 #define SUBDOMAIN_FMT "%m[a-z0-9-]"
 static int domain_reverse(char const *const domain, char *const out, size_t const max) {
 	assert(out);
