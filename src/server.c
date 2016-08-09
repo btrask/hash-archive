@@ -21,7 +21,7 @@ static HTTPServerRef server_tls = NULL;
 
 
 // TODO
-int url_fetch(strarg_t const URL, int *const outstatus, HTTPHeadersRef *const outheaders, hasher_t **const outhasher);
+int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, hasher_t **const outhasher);
 
 
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
@@ -153,7 +153,7 @@ static void init(void *ignore) {
 	int status = 0;
 	HTTPHeadersRef headers = NULL;
 	hasher_t *hasher = NULL;
-	rc = url_fetch("http://localhost:8000/", &status, &headers, &hasher);
+	rc = url_fetch("http://localhost:8000/", "test", &status, &headers, &hasher);
 	alogf("got result %s (%d): %d, %s\n", uv_strerror(rc), rc, status, HTTPHeadersGet(headers, "content-type"));
 	}
 

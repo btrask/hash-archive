@@ -67,7 +67,8 @@ OBJECTS := \
 	$(BUILD_DIR)/src/page_index.o \
 	$(BUILD_DIR)/src/page_history.o \
 	$(BUILD_DIR)/src/page_sources.o \
-	$(BUILD_DIR)/src/fetch.o
+	$(BUILD_DIR)/src/fetch.o \
+	$(BUILD_DIR)/src/queue.o
 
 
 STATIC_LIBS += $(DEPS_DIR)/libasync/build/libasync.a
