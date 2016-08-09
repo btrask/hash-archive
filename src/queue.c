@@ -11,7 +11,7 @@
 #include "db.h"
 #include "page.h"
 
-int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, hasher_t **const outhasher);
+int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, uint64_t *const outlength, hasher_t **const outhasher);
 
 #define HXTimeIDQueuedURLAndClientKeyPack(...)
 #define HXTimeIDQueuedURLAndClientKeyUnpack(...)
@@ -139,11 +139,10 @@ void queue_work(void) {
 		if(rc < 0) break;
 
 		now = uv_hrtime() / 1e9;
-		rc = url_fetch(URL, client, &status, &headers, &hasher);
+		rc = url_fetch(URL, client, &status, &headers, &length, &hasher);
 		if(rc < 0) break;
 
 		type = HTTPHeadersGet(headers, "Content-Type");
-		length = 0; // TODO
 
 		rc = hx_db_open(&db);
 		rc = db_txn_begin(db, NULL, DB_RDWR, &txn);

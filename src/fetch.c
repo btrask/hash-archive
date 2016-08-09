@@ -9,6 +9,7 @@
 #define USER_AGENT "Hash Archive (https://github.com/btrask/hash-archive)"
 
 static int send_get(strarg_t const URL, strarg_t const client, HTTPConnectionRef *const out) {
+	assert(out);
 	HTTPConnectionRef conn = NULL;
 	url_t obj[1];
 	int rc = 0;
@@ -27,9 +28,15 @@ cleanup:
 	HTTPConnectionFree(&conn);
 	return rc;
 }
-int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, hasher_t **const outhasher) {
+int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, uint64_t *const outlength, hasher_t **const outhasher) {
+	assert(outstatus);
+	assert(outheaders);
+	assert(outlength);
+	assert(outhasher);
+
 	HTTPConnectionRef conn = NULL;
 	HTTPHeadersRef headers = NULL;
+	uint64_t length = 0;
 	hasher_t *hasher = NULL;
 	int status = 0;
 	int rc = 0;
@@ -50,12 +57,14 @@ int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, H
 		rc = hasher_update(hasher, (unsigned char *)buf->base, buf->len);
 		async_pool_leave(NULL);
 		if(rc < 0) goto cleanup;
+		length += buf->len;
 	}
 	rc = hasher_finish(hasher);
 	if(rc < 0) goto cleanup;
 
 	*outstatus = status; status = 0;
 	*outheaders = headers; headers = NULL;
+	*outlength = length; length = 0;
 	*outhasher = hasher; hasher = NULL;
 
 cleanup:
