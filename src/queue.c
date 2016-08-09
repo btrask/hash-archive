@@ -19,6 +19,20 @@ int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, H
 
 // TODO
 DB_env *shared_db = NULL;
+int hx_db_load(void) {
+	DB_env *db = NULL;
+	int rc = 0;
+	rc = db_env_create(&db);
+	if(rc < 0) goto cleanup;
+	rc = db_env_set_mapsize(db, 1024ull*1024*1024*64); // 64GB
+	if(rc < 0) goto cleanup;
+	rc = db_env_open(db, "/home/user/Desktop/test.db", 0, 0600);
+	if(rc < 0) goto cleanup;
+	shared_db = db; db = NULL;
+cleanup:
+	db_env_close(db); db = NULL;
+	return rc;
+}
 int hx_db_open(DB_env **const out) {
 	assert(out);
 	async_pool_enter(NULL);
