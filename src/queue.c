@@ -112,44 +112,63 @@ int queue_add(DB_txn *const txn, uint64_t const time, strarg_t const URL, strarg
 	async_cond_broadcast(latest_cond);
 	return 0;
 }
-void queue_work(void) {
+int queue_work(void) {
 	uint64_t then;
 	uint64_t id;
 	char URL[URI_MAX];
 	char client[255+1];
+
 	uint64_t now;
 	int status;
 	HTTPHeadersRef headers = NULL;
-	strarg_t type = NULL;
+	strarg_t type;
 	uint64_t length;
 	hasher_t *hasher = NULL;
+
 	DB_env *db = NULL;
 	DB_txn *txn = NULL;
-	int rc;
+	int rc = 0;
+
+	async_mutex_lock(latest_lock);
 	for(;;) {
-		async_mutex_lock(latest_lock);
-		for(;;) {
-			rc = queue_peek(&then, &id, URL, sizeof(URL), client, sizeof(client));
-			if(DB_NOTFOUND == rc) {
-				rc = async_cond_wait(latest_cond, latest_lock);
-			}
-			if(rc < 0) break;
+		rc = queue_peek(&then, &id, URL, sizeof(URL), client, sizeof(client));
+		if(DB_NOTFOUND == rc) {
+			rc = async_cond_wait(latest_cond, latest_lock);
 		}
-		async_mutex_unlock(latest_lock);
 		if(rc < 0) break;
+	}
+	async_mutex_unlock(latest_lock);
+	if(rc < 0) goto cleanup;
 
-		now = uv_hrtime() / 1e9;
-		rc = url_fetch(URL, client, &status, &headers, &length, &hasher);
+	now = uv_hrtime() / 1e9;
+	rc = url_fetch(URL, client, &status, &headers, &length, &hasher);
+	if(rc < 0) goto cleanup;
+
+	type = HTTPHeadersGet(headers, "Content-Type");
+
+	rc = hx_db_open(&db);
+	if(rc < 0) goto cleanup;
+	rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
+	if(rc < 0) goto cleanup;
+	rc = queue_remove(txn, then, id, URL, client);
+	if(rc < 0) goto cleanup;
+	rc = response_add(txn, now, URL, status, type, length, hasher);
+	if(rc < 0) goto cleanup;
+	rc = db_txn_commit(txn); txn = NULL;
+	if(rc < 0) goto cleanup;
+
+cleanup:
+	db_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+	HTTPHeadersFree(&headers);
+	hasher_free(&hasher);
+	return rc;
+}
+void queue_work_loop(void) {
+	int rc = 0;
+	for(;;) {
+		rc = queue_work();
 		if(rc < 0) break;
-
-		type = HTTPHeadersGet(headers, "Content-Type");
-
-		rc = hx_db_open(&db);
-		rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
-		rc = queue_remove(txn, then, id, URL, client);
-		rc = response_add(txn, now, URL, status, type, length, hasher);
-		rc = db_txn_commit(txn); txn = NULL;
-		hx_db_close(&db);
 	}
 	alogf("Worker terminated: %s\n", hx_strerror(rc));
 }
