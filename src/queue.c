@@ -113,7 +113,7 @@ int queue_add(DB_txn *const txn, uint64_t const time, strarg_t const URL, strarg
 	return 0;
 }
 void queue_work(void) {
-	uint64_t time;
+	uint64_t then;
 	uint64_t id;
 	char URL[URI_MAX];
 	char client[255+1];
@@ -129,7 +129,7 @@ void queue_work(void) {
 	for(;;) {
 		async_mutex_lock(latest_lock);
 		for(;;) {
-			rc = queue_peek(&time, &id, URL, sizeof(URL), client, sizeof(client));
+			rc = queue_peek(&then, &id, URL, sizeof(URL), client, sizeof(client));
 			if(DB_NOTFOUND == rc) {
 				rc = async_cond_wait(latest_cond, latest_lock);
 			}
@@ -147,7 +147,7 @@ void queue_work(void) {
 
 		rc = hx_db_open(&db);
 		rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
-		rc = queue_remove(txn, time, id, URL, client);
+		rc = queue_remove(txn, then, id, URL, client);
 		rc = response_add(txn, now, URL, status, type, length, hasher);
 		rc = db_txn_commit(txn); txn = NULL;
 		hx_db_close(&db);
