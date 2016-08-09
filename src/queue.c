@@ -45,6 +45,7 @@ static uint64_t current_id = 0; // TODO
 static uint64_t latest_time = 0;
 static uint64_t latest_id = 0;
 static async_mutex_t latest_lock[1];
+static async_cond_t latest_cond[1];
 
 static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *const outURL, size_t const urlmax, char *const outclient, size_t const clientmax) {
 	assert(outtime);
@@ -62,7 +63,6 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	strarg_t URL, client;
 	int rc = 0;
 
-	async_mutex_lock(latest_lock);
 	rc = hx_db_open(&db);
 	if(rc < 0) goto cleanup;
 	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
@@ -84,7 +84,6 @@ cleanup:
 	cursor = NULL;
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
-	async_mutex_unlock(latest_lock);
 	return rc;
 }
 static int queue_remove(DB_txn *const txn, uint64_t const time, uint64_t const id, strarg_t const URL, strarg_t const client) {
@@ -108,7 +107,10 @@ int queue_add(DB_txn *const txn, uint64_t const time, strarg_t const URL, strarg
 	assert(client);
 	DB_val key[1];
 	HXTimeIDQueuedURLAndClientKeyPack(key, time, current_id++, URL, client);
-	return db_put(txn, key, NULL, 0); // DB_NOOVERWRITE_FAST
+	int rc = db_put(txn, key, NULL, 0); // DB_NOOVERWRITE_FAST
+	if(rc < 0) return rc;
+	async_cond_broadcast(latest_cond);
+	return 0;
 }
 void queue_work(void) {
 	uint64_t time;
@@ -125,11 +127,15 @@ void queue_work(void) {
 	DB_txn *txn = NULL;
 	int rc;
 	for(;;) {
-		rc = queue_peek(&time, &id, URL, sizeof(URL), client, sizeof(client));
-		if(DB_NOTFOUND == rc) {
-			// TODO: Wait for event.
-			continue;
+		async_mutex_lock(latest_lock);
+		for(;;) {
+			rc = queue_peek(&time, &id, URL, sizeof(URL), client, sizeof(client));
+			if(DB_NOTFOUND == rc) {
+				rc = async_cond_wait(latest_cond, latest_lock);
+			}
+			if(rc < 0) break;
 		}
+		async_mutex_unlock(latest_lock);
 		if(rc < 0) break;
 
 		now = uv_hrtime() / 1e9;
