@@ -52,7 +52,9 @@ void hx_db_close(DB_env **const in) {
 	async_pool_leave(NULL);
 }
 char const *hx_strerror(int const rc) {
-	return NULL; // TODO
+	char const *x = db_strerror(rc);
+	if(x) return x;
+	return uv_strerror(rc);
 }
 
 
