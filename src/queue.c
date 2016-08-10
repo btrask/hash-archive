@@ -62,12 +62,19 @@ char const *hx_strerror(int const rc) {
 static uint64_t current_id = 0;
 static async_mutex_t id_lock[1];
 
-
-
 static uint64_t latest_time = 0;
 static uint64_t latest_id = 0;
 static async_mutex_t latest_lock[1];
 static async_cond_t latest_cond[1];
+
+void queue_init(void) {
+	async_mutex_init(id_lock, 0);
+	async_mutex_init(latest_lock, 0);
+	async_cond_init(latest_cond, 0);
+	int rc = hx_db_load();
+	assert(rc >= 0);
+}
+
 
 static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *const outURL, size_t const urlmax, char *const outclient, size_t const clientmax) {
 	assert(outtime);
@@ -164,16 +171,33 @@ int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, stra
 	return 0;
 }
 
-int queue_add(DB_txn *const txn, uint64_t const time, strarg_t const URL, strarg_t const client) {
+int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	assert(time);
 	assert(URL);
 	assert(client);
+	DB_env *db = NULL;
+	DB_txn *txn = NULL;
 	DB_val key[1];
-	HXTimeIDQueuedURLAndClientKeyPack(key, time, current_id++, URL, client);
-	int rc = db_put(txn, key, NULL, 0); // DB_NOOVERWRITE_FAST
-	if(rc < 0) return rc;
+
+	async_mutex_lock(id_lock);
+	uint64_t const id = ++current_id;
+	async_mutex_unlock(id_lock);
+
+	int rc = hx_db_open(&db);
+	if(rc < 0) goto cleanup;
+	rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
+	if(rc < 0) goto cleanup;
+	HXTimeIDQueuedURLAndClientKeyPack(key, time, id, URL, client);
+	rc = db_put(txn, key, NULL, 0); // DB_NOOVERWRITE_FAST
+	if(rc < 0) goto cleanup;
+	rc = db_txn_commit(txn); txn = NULL;
+	if(rc < 0) goto cleanup;
+	hx_db_close(&db);
 	async_cond_broadcast(latest_cond);
-	return 0;
+cleanup:
+	db_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+	return rc;
 }
 int queue_work(void) {
 	uint64_t then;
@@ -231,7 +255,7 @@ cleanup:
 	hasher_free(&hasher);
 	return rc;
 }
-void queue_work_loop(void) {
+void queue_work_loop(void *ignored) {
 	int rc = 0;
 	for(;;) {
 		rc = queue_work();

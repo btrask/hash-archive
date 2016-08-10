@@ -21,7 +21,9 @@ static HTTPServerRef server_tls = NULL;
 
 
 // TODO
-int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, uint64_t *const outlength, hasher_t **const outhasher);
+void queue_init(void);
+int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);
+void queue_work_loop(void *ignored);
 
 
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
@@ -149,14 +151,17 @@ static void init(void *ignore) {
 
 
 
-	{ // TODO: debug
+/*	{ // TODO: debug
 	int status = 0;
 	HTTPHeadersRef headers = NULL;
 	uint64_t length = 0;
 	hasher_t *hasher = NULL;
 	rc = url_fetch("http://localhost:8000/", "test", &status, &headers, &length, &hasher);
 	alogf("got result %s (%d): %d, %s\n", uv_strerror(rc), rc, status, HTTPHeadersGet(headers, "content-type"));
-	}
+	}*/
+	queue_init();
+	async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
+	queue_add(uv_hrtime()/1e9, "http://localhost:8000/", "test");
 
 
 cleanup:
