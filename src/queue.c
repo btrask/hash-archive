@@ -8,6 +8,7 @@
 #include <async/http/HTTP.h>
 #include "util/hash.h"
 #include "util/strext.h"
+#include "util/url.h"
 #include "db.h"
 #include "page.h"
 
@@ -16,6 +17,10 @@ int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, H
 #define HXTimeIDQueuedURLAndClientKeyPack(...)
 #define HXTimeIDQueuedURLAndClientKeyUnpack(...)
 #define HXTimeIDQueuedURLAndClientRange2(...)
+
+#define HXTimeIDToResponseKeyPack(...)
+#define HXURLSurtAndTimeIDKeyPack(...)
+#define HXHashAndTimeIDKeyPack(...)
 
 // TODO
 DB_env *shared_db = NULL;
@@ -52,7 +57,8 @@ char const *hx_strerror(int const rc) {
 
 
 
-static uint64_t current_id = 0; // TODO
+static uint64_t current_id = 0;
+static async_mutex_t id_lock[1];
 
 
 
@@ -111,8 +117,49 @@ static int queue_remove(DB_txn *const txn, uint64_t const time, uint64_t const i
 }
 
 
-int response_add(DB_txn *const txn, uint64_t const time, strarg_t const URL, int const status, strarg_t const content_type, uint64_t const content_length, hasher_t *const hasher) {
-	return -1; // TODO
+int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, strarg_t const URL, int const status, strarg_t const type, uint64_t const length, hasher_t *const hasher) {
+	char URL_surt[URI_MAX];
+	int rc = url_normalize_surt(URL, URL_surt, sizeof(URL_surt));
+	if(rc < 0) return rc;
+
+	// TODO: Signed varints would be more efficient.
+	int64_t sstatus = 0xffff + status;
+	db_assert(sstatus >= 0);
+
+	DB_val res_key[1], res_val[1];
+	HXTimeIDToResponseKeyPack(res_key, time, id);
+	DB_VAL_STORAGE(res_val,
+		URI_MAX+2 +
+		DB_VARINT_MAX +
+		DB_INLINE_MAX +
+		DB_VARINT_MAX *
+		DB_BLOB_MAX(HASH_DIGEST_MAX)*HASH_ALGO_MAX)
+	db_bind_blob(res_val, (unsigned char const *)URL, strlen(URL)); // Avoids external storage
+	db_bind_uint64(res_val, (uint64_t)sstatus);
+	db_bind_string(res_val, type, txn);
+	db_bind_uint64(res_val, length);
+	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
+		db_bind_blob(res_val, hasher_get(hasher, i), hash_algo_digest_len(i));
+	}
+	DB_VAL_STORAGE_VERIFY(res_val);
+	rc = db_put(txn, res_key, res_val, DB_NOOVERWRITE_FAST);
+	if(rc < 0) return rc;
+
+	DB_val url_key[1];
+	HXURLSurtAndTimeIDKeyPack(url_key, URL_surt, time, id);
+	rc = db_put(txn, url_key, NULL, DB_NOOVERWRITE_FAST);
+	if(rc < 0) return rc;
+
+	DB_val hash_key[1];
+	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
+		uint8_t const *const hash = hasher_get(hasher, i);
+		if(!hash) continue;
+		HXHashAndTimeIDKeyPack(hash_key, hash, time, id);
+		rc = db_put(txn, hash_key, NULL, DB_NOOVERWRITE_FAST);
+		if(rc < 0) return rc;
+	}
+
+	return 0;
 }
 
 int queue_add(DB_txn *const txn, uint64_t const time, strarg_t const URL, strarg_t const client) {
@@ -128,11 +175,12 @@ int queue_add(DB_txn *const txn, uint64_t const time, strarg_t const URL, strarg
 }
 int queue_work(void) {
 	uint64_t then;
-	uint64_t id;
+	uint64_t old_id;
 	char URL[URI_MAX];
 	char client[255+1];
 
 	uint64_t now;
+	uint64_t new_id;
 	int status;
 	HTTPHeadersRef headers = NULL;
 	strarg_t type;
@@ -145,7 +193,7 @@ int queue_work(void) {
 
 	async_mutex_lock(latest_lock);
 	for(;;) {
-		rc = queue_peek(&then, &id, URL, sizeof(URL), client, sizeof(client));
+		rc = queue_peek(&then, &old_id, URL, sizeof(URL), client, sizeof(client));
 		if(DB_NOTFOUND == rc) {
 			rc = async_cond_wait(latest_cond, latest_lock);
 		}
@@ -154,6 +202,9 @@ int queue_work(void) {
 	async_mutex_unlock(latest_lock);
 	if(rc < 0) goto cleanup;
 
+	async_mutex_lock(id_lock);
+	new_id = current_id++;
+	async_mutex_unlock(id_lock);
 	now = uv_hrtime() / 1e9;
 	rc = url_fetch(URL, client, &status, &headers, &length, &hasher);
 	if(rc < 0) goto cleanup;
@@ -164,9 +215,9 @@ int queue_work(void) {
 	if(rc < 0) goto cleanup;
 	rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
 	if(rc < 0) goto cleanup;
-	rc = queue_remove(txn, then, id, URL, client);
+	rc = queue_remove(txn, then, old_id, URL, client);
 	if(rc < 0) goto cleanup;
-	rc = response_add(txn, now, URL, status, type, length, hasher);
+	rc = response_add(txn, now, new_id, URL, status, type, length, hasher);
 	if(rc < 0) goto cleanup;
 	rc = db_txn_commit(txn); txn = NULL;
 	if(rc < 0) goto cleanup;
