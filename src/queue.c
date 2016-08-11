@@ -106,6 +106,7 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	latest_time = *outtime;
 	latest_id = *outid;
 cleanup:
+	alogf("peeked... %s\n", hx_strerror(rc));
 	cursor = NULL;
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
@@ -164,6 +165,8 @@ int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, stra
 		if(rc < 0) return rc;
 	}
 
+alogf("Added response %s %d %s %llu (%s)\n", URL, status, type, (unsigned long long)length, URL_surt);
+
 	return 0;
 }
 
@@ -189,6 +192,7 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	rc = db_txn_commit(txn); txn = NULL;
 	if(rc < 0) goto cleanup;
 	hx_db_close(&db);
+	alogf("enqueued %s (%s)\n", URL, hx_strerror(rc));
 	async_cond_broadcast(latest_cond);
 cleanup:
 	db_txn_abort(txn); txn = NULL;
@@ -215,14 +219,16 @@ int queue_work(void) {
 
 	async_mutex_lock(latest_lock);
 	for(;;) {
+		alogf("waiting for work...\n");
 		rc = queue_peek(&then, &old_id, URL, sizeof(URL), client, sizeof(client));
-		if(DB_NOTFOUND == rc) {
-			rc = async_cond_wait(latest_cond, latest_lock);
-		}
+		if(DB_NOTFOUND != rc) break;
+		rc = async_cond_wait(latest_cond, latest_lock);
 		if(rc < 0) break;
 	}
 	async_mutex_unlock(latest_lock);
 	if(rc < 0) goto cleanup;
+
+	alogf("fetching %s\n", URL);
 
 	async_mutex_lock(id_lock);
 	new_id = current_id++;

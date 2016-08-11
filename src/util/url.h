@@ -6,7 +6,7 @@
 #define HOST_MAX (255+1)
 #define HOST_FMT "%255[^/]"
 #define DOMAIN_MAX (255+1)
-#define DOMAIN_FMT "%255[^a-zA-Z0-9.-]"
+#define DOMAIN_FMT "%255[a-zA-Z0-9.-]"
 #define PATH_MAX (1023+1)
 #define PATH_FMT "%1023[^#]"
 

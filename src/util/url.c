@@ -106,7 +106,7 @@ static int domain_reverse(char const *const domain, char *const out, size_t cons
 		if(!d[i]) continue;
 		strlcat(out, d[i], max);
 		strlcat(out, ",", max);
-		free(&d[i]); d[i] = NULL;
+		free(d[i]); d[i] = NULL;
 	}
 	strlcat(out, ")", max);
 	return 0;
