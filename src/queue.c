@@ -106,7 +106,6 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	latest_time = *outtime;
 	latest_id = *outid;
 cleanup:
-	alogf("peeked... %s\n", hx_strerror(rc));
 	cursor = NULL;
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
@@ -219,7 +218,6 @@ int queue_work(void) {
 
 	async_mutex_lock(latest_lock);
 	for(;;) {
-		alogf("waiting for work...\n");
 		rc = queue_peek(&then, &old_id, URL, sizeof(URL), client, sizeof(client));
 		if(DB_NOTFOUND != rc) break;
 		rc = async_cond_wait(latest_cond, latest_lock);

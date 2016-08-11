@@ -13,6 +13,8 @@
 #define SERVER_RAW_ADDR NULL
 #define SERVER_RAW_PORT 8000
 
+#define QUEUE_WORKERS 16
+
 static HTTPServerRef server_raw = NULL;
 static HTTPServerRef server_tls = NULL;
 
@@ -160,7 +162,9 @@ static void init(void *ignore) {
 	alogf("got result %s (%d): %d, %s\n", uv_strerror(rc), rc, status, HTTPHeadersGet(headers, "content-type"));
 	}*/
 	queue_init();
-	async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
+	for(size_t i = 0; i < QUEUE_WORKERS; i++) {
+		async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
+	}
 	queue_add(uv_hrtime()/1e9, "http://localhost:8000/", "test");
 
 
