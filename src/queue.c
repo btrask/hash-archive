@@ -126,8 +126,6 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	if(rc < 0) goto cleanup;
 
 	HXTimeIDQueuedURLAndClientKeyUnpack(key, txn, outtime, outid, &URL, &client);
-	URL = NULL; // TODO
-	client = NULL; // TODO
 	strlcpy(outURL, URL ? URL : "", urlmax);
 	strlcpy(outclient, client ? client : "", clientmax);
 	latest_time = *outtime;
