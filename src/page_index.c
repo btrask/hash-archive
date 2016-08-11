@@ -45,7 +45,6 @@ int page_index(HTTPConnectionRef const conn) {
 		{ "prefix-example", link_html(LINK_PREFIX, example_prefix) },
 		{ "ssb-example", link_html(LINK_SSB, example_ssb) },
 		{ "magnet-example", link_html(LINK_MAGNET, example_magnet) },
-		{ "examples", "" },
 		{ "recent-list", "" },
 		{ "critical-list", "" },
 		{ NULL, NULL },
