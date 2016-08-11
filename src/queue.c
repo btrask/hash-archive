@@ -14,31 +14,6 @@
 
 int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, uint64_t *const outlength, hasher_t **const outhasher);
 
-#define HXTimeIDQueuedURLAndClientKeyPack(val, txn, time, id, url, client) \
-	DB_VAL_STORAGE(val, DB_VARINT_MAX*4+DB_INLINE_MAX*2) \
-	db_bind_uint64((val), HXTimeIDQueuedURLAndClient); \
-	db_bind_uint64((val), (time)); \
-	db_bind_uint64((val), (id)); \
-	db_bind_string((val), (url), (txn)); \
-	db_bind_string((val), (client), (txn)); \
-	DB_VAL_STORAGE_VERIFY(val);
-#define HXTimeIDQueuedURLAndClientRange0(range) \
-	DB_RANGE_STORAGE(range, DB_VARINT_MAX) \
-	db_bind_uint64((range)->min, HXTimeIDQueuedURLAndClient); \
-	db_range_genmax((range)); \
-	DB_RANGE_STORAGE_VERIFY(range);
-static void HXTimeIDQueuedURLAndClientKeyUnpack(DB_val *const val, DB_txn *const txn, uint64_t *const time, uint64_t *const id, strarg_t *const URL, strarg_t *const client) {
-	uint64_t const table = db_read_uint64(val);
-	assert(HXTimeIDQueuedURLAndClient == table);
-	*time = db_read_uint64(val);
-	*id = db_read_uint64(val);
-	*URL = db_read_string(val, txn);
-	*client = db_read_string(val, txn);
-}
-
-#define HXTimeIDToResponseKeyPack(...)
-#define HXURLSurtAndTimeIDKeyPack(...)
-#define HXHashAndTimeIDKeyPack(...)
 
 // TODO
 DB_env *shared_db = NULL;
@@ -176,7 +151,7 @@ int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, stra
 	if(rc < 0) return rc;
 
 	DB_val url_key[1];
-	HXURLSurtAndTimeIDKeyPack(url_key, URL_surt, time, id);
+	HXURLSurtAndTimeIDKeyPack(url_key, txn, URL_surt, time, id);
 	rc = db_put(txn, url_key, NULL, DB_NOOVERWRITE_FAST);
 	if(rc < 0) return rc;
 
@@ -184,7 +159,7 @@ int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, stra
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		uint8_t const *const hash = hasher_get(hasher, i);
 		if(!hash) continue;
-		HXHashAndTimeIDKeyPack(hash_key, hash, time, id);
+		HXHashAndTimeIDKeyPack(hash_key, i, hash, time, id);
 		rc = db_put(txn, hash_key, NULL, DB_NOOVERWRITE_FAST);
 		if(rc < 0) return rc;
 	}
