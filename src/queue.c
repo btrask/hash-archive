@@ -14,9 +14,23 @@
 
 int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, uint64_t *const outlength, hasher_t **const outhasher);
 
-#define HXTimeIDQueuedURLAndClientKeyPack(...)
-#define HXTimeIDQueuedURLAndClientKeyUnpack(...)
+#define HXTimeIDQueuedURLAndClientKeyPack(val, txn, time, id, url, client) \
+	DB_VAL_STORAGE(val, DB_VARINT_MAX*4+DB_INLINE_MAX*2) \
+	db_bind_uint64((val), HXTimeIDQueuedURLAndClient); \
+	db_bind_uint64((val), (time)); \
+	db_bind_uint64((val), (id)); \
+	db_bind_string((val), (url), (txn)); \
+	db_bind_string((val), (client), (txn)); \
+	DB_VAL_STORAGE_VERIFY(val);
 #define HXTimeIDQueuedURLAndClientRange2(...)
+static void HXTimeIDQueuedURLAndClientKeyUnpack(DB_val *const val, DB_txn *const txn, uint64_t *const time, uint64_t *const id, strarg_t *const URL, strarg_t *const client) {
+	uint64_t const table = db_read_uint64(val);
+	assert(HXTimeIDQueuedURLAndClient == table);
+	*time = db_read_uint64(val);
+	*id = db_read_uint64(val);
+	*URL = db_read_string(val, txn);
+	*client = db_read_string(val, txn);
+}
 
 #define HXTimeIDToResponseKeyPack(...)
 #define HXURLSurtAndTimeIDKeyPack(...)
@@ -102,7 +116,7 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	rc = db_cursor_firstr(cursor, range, key, NULL, +1);
 	if(rc < 0) goto cleanup;
 
-	HXTimeIDQueuedURLAndClientKeyUnpack(key, outtime, outid, &URL, &client);
+	HXTimeIDQueuedURLAndClientKeyUnpack(key, txn, outtime, outid, &URL, &client);
 	URL = NULL; // TODO
 	client = NULL; // TODO
 	strlcpy(outURL, URL ? URL : "", urlmax);
@@ -121,7 +135,7 @@ static int queue_remove(DB_txn *const txn, uint64_t const time, uint64_t const i
 	assert(URL);
 	assert(client);
 	DB_val key[1];
-	HXTimeIDQueuedURLAndClientKeyPack(key, time, id, URL, client);
+	HXTimeIDQueuedURLAndClientKeyPack(key, txn, time, id, URL, client);
 	return db_del(txn, key, 0); // DB_NOOVERWRITE_FAST
 }
 
@@ -187,7 +201,7 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	if(rc < 0) goto cleanup;
 	rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
 	if(rc < 0) goto cleanup;
-	HXTimeIDQueuedURLAndClientKeyPack(key, time, id, URL, client);
+	HXTimeIDQueuedURLAndClientKeyPack(key, txn, time, id, URL, client);
 	rc = db_put(txn, key, NULL, 0); // DB_NOOVERWRITE_FAST
 	if(rc < 0) goto cleanup;
 	rc = db_txn_commit(txn); txn = NULL;

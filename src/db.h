@@ -4,9 +4,12 @@
 #include <kvstore/db_schema.h>
 
 enum {
+	// TODO: Old name format
 	harc_timeid_to_entry = 20,
 	harc_url_timeid = 21,
 	harc_hash_timeid = 50,
+
+	HXTimeIDQueuedURLAndClient = 30,
 };
 
 #define harc_timeid_to_entry_keypack(val, time, id) \
