@@ -22,7 +22,11 @@ int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, H
 	db_bind_string((val), (url), (txn)); \
 	db_bind_string((val), (client), (txn)); \
 	DB_VAL_STORAGE_VERIFY(val);
-#define HXTimeIDQueuedURLAndClientRange2(...)
+#define HXTimeIDQueuedURLAndClientRange0(range) \
+	DB_RANGE_STORAGE(range, DB_VARINT_MAX) \
+	db_bind_uint64((range)->min, HXTimeIDQueuedURLAndClient); \
+	db_range_genmax((range)); \
+	DB_RANGE_STORAGE_VERIFY(range);
 static void HXTimeIDQueuedURLAndClientKeyUnpack(DB_val *const val, DB_txn *const txn, uint64_t *const time, uint64_t *const id, strarg_t *const URL, strarg_t *const client) {
 	uint64_t const table = db_read_uint64(val);
 	assert(HXTimeIDQueuedURLAndClient == table);
@@ -112,8 +116,13 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	if(rc < 0) goto cleanup;
 	rc = db_txn_cursor(txn, &cursor);
 	if(rc < 0) goto cleanup;
-	HXTimeIDQueuedURLAndClientRange2(range, latest_time, latest_id);
-	rc = db_cursor_firstr(cursor, range, key, NULL, +1);
+	HXTimeIDQueuedURLAndClientRange0(range);
+	DB_VAL_STORAGE(key, DB_VARINT_MAX*3)
+	db_bind_uint64(key, HXTimeIDQueuedURLAndClient);
+	db_bind_uint64(key, latest_time);
+	db_bind_uint64(key, latest_id+1);
+	DB_VAL_STORAGE_VERIFY(key);
+	rc = db_cursor_seekr(cursor, range, key, NULL, +1);
 	if(rc < 0) goto cleanup;
 
 	HXTimeIDQueuedURLAndClientKeyUnpack(key, txn, outtime, outid, &URL, &client);
