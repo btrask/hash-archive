@@ -15,43 +15,6 @@
 int url_fetch(strarg_t const URL, strarg_t const client, int *const outstatus, HTTPHeadersRef *const outheaders, uint64_t *const outlength, hasher_t **const outhasher);
 
 
-// TODO
-DB_env *shared_db = NULL;
-int hx_db_load(void) {
-	DB_env *db = NULL;
-	int rc = 0;
-	rc = db_env_create(&db);
-	if(rc < 0) goto cleanup;
-	rc = db_env_set_mapsize(db, 1024ull*1024*1024*64); // 64GB
-	if(rc < 0) goto cleanup;
-	rc = db_env_open(db, "/home/user/Desktop/test.db", 0, 0600);
-	if(rc < 0) goto cleanup;
-	shared_db = db; db = NULL;
-cleanup:
-	db_env_close(db); db = NULL;
-	return rc;
-}
-int hx_db_open(DB_env **const out) {
-	assert(out);
-	async_pool_enter(NULL);
-	*out = shared_db;
-	return 0;
-}
-void hx_db_close(DB_env **const in) {
-	assert(in);
-	DB_env *db = *in; *in = NULL;
-	if(!db) return;
-	db = NULL;
-	async_pool_leave(NULL);
-}
-char const *hx_strerror(int const rc) {
-	char const *x = db_strerror(rc);
-	if(x) return x;
-	return uv_strerror(rc);
-}
-
-
-
 static uint64_t current_id = 0;
 static async_mutex_t id_lock[1];
 
@@ -60,12 +23,12 @@ static uint64_t latest_id = 0;
 static async_mutex_t latest_lock[1];
 static async_cond_t latest_cond[1];
 
+
+// TODO: Define static async_x_t initializers
 void queue_init(void) {
 	async_mutex_init(id_lock, 0);
 	async_mutex_init(latest_lock, 0);
 	async_cond_init(latest_cond, 0);
-	int rc = hx_db_load();
-	assert(rc >= 0);
 }
 
 
@@ -159,7 +122,7 @@ int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, stra
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		uint8_t const *const hash = hasher_get(hasher, i);
 		if(!hash) continue;
-		HXHashAndTimeIDKeyPack(hash_key, i, hash, time, id);
+		HXAlgoHashAndTimeIDKeyPack(hash_key, i, hash, time, id);
 		rc = db_put(txn, hash_key, NULL, DB_NOOVERWRITE_FAST);
 		if(rc < 0) return rc;
 	}

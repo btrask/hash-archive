@@ -1,10 +1,17 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#include <assert.h>
 #include <kvstore/db_schema.h>
 
 // TODO
 typedef char const *strarg_t;
+
+int hx_db_load(void);
+int hx_db_open(DB_env **const out);
+void hx_db_close(DB_env **const in);
+
+char const *hx_strerror(int const rc);
 
 enum {
 	// 0-19 reserved.
@@ -26,6 +33,11 @@ enum {
 	db_bind_uint64((val), (time)); \
 	db_bind_uint64((val), (id)); \
 	DB_VAL_STORAGE_VERIFY(val);
+#define HXTimeIDToResponseRange0(range) \
+	DB_RANGE_STORAGE(range, DB_VARINT_MAX); \
+	db_bind_uint64((range)->min, HXTimeIDToResponse); \
+	db_range_genmax((range)); \
+	DB_RANGE_STORAGE_VERIFY(range);
 
 #define HXURLSurtAndTimeIDKeyPack(val, txn, url, time, id) \
 	DB_VAL_STORAGE(val, DB_VARINT_MAX*3 + DB_INLINE_MAX); \
@@ -34,6 +46,19 @@ enum {
 	db_bind_uint64((val), (time)); \
 	db_bind_uint64((val), (id)); \
 	DB_VAL_STORAGE_VERIFY(val);
+#define HXURLSurtAndTimeIDRange1(range, txn, url) \
+	DB_RANGE_STORAGE(range, DB_VARINT_MAX+DB_INLINE_MAX); \
+	db_bind_uint64((range)->min, HXURLSurtAndTimeID); \
+	db_bind_string((range)->min, (url), (txn)); \
+	db_range_genmax((range)); \
+	DB_RANGE_STORAGE_VERIFY(range);
+static void HXURLSurtAndTimeIDKeyUnpack(DB_val *const val, DB_txn *const txn, strarg_t *const url, uint64_t *const time, uint64_t *const id) {
+	uint64_t const table = db_read_uint64(val);
+	assert(HXURLSurtAndTimeID == table);
+	*url = db_read_string(val, txn);
+	*time = db_read_uint64(val);
+	*id = db_read_uint64(val);
+}
 
 #define HXTimeIDQueuedURLAndClientKeyPack(val, txn, time, id, url, client) \
 	DB_VAL_STORAGE(val, DB_VARINT_MAX*3 + DB_INLINE_MAX*2) \
@@ -57,11 +82,18 @@ static void HXTimeIDQueuedURLAndClientKeyUnpack(DB_val *const val, DB_txn *const
 	*client = db_read_string(val, txn);
 }
 
-#define HXHashAndTimeIDKeyPack(val, algo, hash, time, id) \
+#define HXAlgoHashAndTimeIDKeyPack(val, algo, hash, time, id) \
 	DB_VAL_STORAGE(val, DB_VARINT_MAX*3 + DB_BLOB_MAX(HX_HASH_INDEX_LEN)); \
 	db_bind_uint64((val), HXHashAndTimeID+(algo)); \
 	db_bind_blob((val), (hash), HX_HASH_INDEX_LEN); \
 	db_bind_uint64((val), (time)); \
 	db_bind_uint64((val), (id)); \
 	DB_VAL_STORAGE_VERIFY(val);
+#define HXAlgoHashAndTimeIDRange2(range, algo, hash) \
+	DB_RANGE_STORAGE(range); \
+	db_bind_uint64((range)->min, HXHashAndTimeID+(algo)); \
+	db_bind_blob((range)->min, (hash), HX_HASH_INDEX_LEN); \
+	db_range_genmax((range)); \
+	DB_RANGE_STORAGE_VERIFY(range);
+
 

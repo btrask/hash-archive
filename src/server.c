@@ -9,6 +9,7 @@
 #include "util/hash.h"
 #include "util/url.h"
 #include "page.h"
+#include "db.h"
 
 #define SERVER_RAW_ADDR NULL
 #define SERVER_RAW_PORT 8000
@@ -161,6 +162,10 @@ static void init(void *ignore) {
 	rc = url_fetch("http://localhost:8000/", "test", &status, &headers, &length, &hasher);
 	alogf("got result %s (%d): %d, %s\n", uv_strerror(rc), rc, status, HTTPHeadersGet(headers, "content-type"));
 	}*/
+
+	rc = hx_db_load();
+	if(rc < 0) goto cleanup;
+
 	queue_init();
 	for(size_t i = 0; i < QUEUE_WORKERS; i++) {
 		async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
