@@ -30,6 +30,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	DB_env *db = NULL;
 	DB_txn *txn = NULL;
 	DB_cursor *cursor = NULL;
+	DB_cursor *c2 = NULL;
 
 	rc = hx_db_open(&db);
 	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
@@ -40,10 +41,22 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	HXURLSurtAndTimeIDRange1(range, txn, surt);
 	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
 	for(; rc >= 0; rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
-		strarg_t url;
+		strarg_t surt;
 		uint64_t time, id;
-		HXURLSurtAndTimeIDKeyUnpack(key, txn, &url, &time, &id);
-		fprintf(stderr, "%s, %llu, %llu\n", url, (unsigned long long)time, (unsigned long long)id);
+		HXURLSurtAndTimeIDKeyUnpack(key, txn, &surt, &time, &id);
+
+		DB_val res_key[1], res_val[1];
+		HXTimeIDToResponseKeyPack(res_key, time, id);
+		rc = db_get(txn, res_key, res_val);
+		char url[URI_MAX];
+		size_t x = db_read_blob(res_val, (unsigned char *)url, sizeof(url));
+		assert(x < sizeof(url));
+		url[x] = '\0';
+		int const status = db_read_uint64(res_val) - 0xffff;
+		strarg_t const type = db_read_string(res_val, txn);
+		uint64_t const length = db_read_uint64(res_val);
+
+		fprintf(stderr, "%s, %d, %s, %llu\n", url, status, type, (unsigned long long)length);
 	}
 
 	db_cursor_close(cursor); cursor = NULL;
