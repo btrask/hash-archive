@@ -30,7 +30,6 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	DB_env *db = NULL;
 	DB_txn *txn = NULL;
 	DB_cursor *cursor = NULL;
-	DB_cursor *c2 = NULL;
 
 	rc = hx_db_open(&db);
 	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
