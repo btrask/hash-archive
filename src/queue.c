@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include <async/async.h>
 #include <async/http/HTTP.h>
 #include "util/hash.h"
@@ -194,7 +195,7 @@ int queue_work(void) {
 	async_mutex_lock(id_lock);
 	new_id = current_id++;
 	async_mutex_unlock(id_lock);
-	now = uv_hrtime() / 1e9;
+	now = time(NULL);
 	rc = url_fetch(URL, client, &status, &headers, &length, &hasher);
 	if(rc < 0) goto cleanup;
 

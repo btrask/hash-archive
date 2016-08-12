@@ -2,6 +2,7 @@
 // MIT licensed (see LICENSE for details)
 
 #include <stdlib.h>
+#include <time.h>
 #include <async/async.h>
 #include <async/http/HTTPServer.h>
 #include <async/http/QueryString.h>
@@ -170,7 +171,7 @@ static void init(void *ignore) {
 	for(size_t i = 0; i < QUEUE_WORKERS; i++) {
 		async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
 	}
-	queue_add(uv_hrtime()/1e9, "http://localhost:8000/", "test");
+	queue_add(time(NULL), "http://localhost:8000/", "test");
 
 
 cleanup:
