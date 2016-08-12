@@ -98,12 +98,12 @@ int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, stra
 	DB_val res_key[1], res_val[1];
 	HXTimeIDToResponseKeyPack(res_key, time, id);
 	DB_VAL_STORAGE(res_val,
-		URI_MAX+2 +
+		DB_INLINE_MAX +
 		DB_VARINT_MAX +
 		DB_INLINE_MAX +
 		DB_VARINT_MAX *
 		DB_BLOB_MAX(HASH_DIGEST_MAX)*HASH_ALGO_MAX)
-	db_bind_blob(res_val, (unsigned char const *)URL, strlen(URL)); // Avoids external storage
+	db_bind_string(res_val, URL, txn);
 	db_bind_uint64(res_val, (uint64_t)sstatus);
 	db_bind_string(res_val, type, txn);
 	db_bind_uint64(res_val, length);

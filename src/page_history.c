@@ -48,10 +48,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		DB_val res_key[1], res_val[1];
 		HXTimeIDToResponseKeyPack(res_key, time, id);
 		rc = db_get(txn, res_key, res_val);
-		char url[URI_MAX];
-		size_t x = db_read_blob(res_val, (unsigned char *)url, sizeof(url));
-		assert(x < sizeof(url));
-		url[x] = '\0';
+		strarg_t const url = db_read_string(res_val, txn);
 		int const status = db_read_uint64(res_val) - 0xffff;
 		strarg_t const type = db_read_string(res_val, txn);
 		uint64_t const length = db_read_uint64(res_val);
