@@ -54,7 +54,7 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 			.buf = (unsigned char *)res->hashes[i],
 			.len = res->hlen[i],
 		}};
-//		if(obj->len <= 0) continue;
+		if(obj->len <= 0) continue;
 		char *x = item_html_obj(obj);
 		if(!x) return UV_ENOMEM;
 		int rc = wr(wctx, uv_buf_init(x, strlen(x)));
@@ -133,8 +133,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 
 
 	for(size_t j = 0; j < i; j++) {
-		fprintf(stderr, "%llu\n", (unsigned long long)responses[j]->time);
-		TemplateWriteHTTPChunk(entry, hist_var, &responses[i], conn);
+		TemplateWriteHTTPChunk(entry, hist_var, &responses[j], conn);
 	}
 
 
