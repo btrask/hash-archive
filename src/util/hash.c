@@ -241,6 +241,7 @@ int hash_uri_format(hash_uri_t const *const obj, char *const out, size_t const m
 	if(obj->algo < 0) return HASH_EINVAL;
 	if(obj->algo >= HASH_ALGO_MAX) return HASH_EINVAL;
 	char const *const name = hash_algo_names[obj->algo];
+	if(!name) return HASH_EINVAL;
 	switch(obj->type) {
 	case LINK_HASH_URI: {
 		char hex[HASH_DIGEST_MAX*2+1];

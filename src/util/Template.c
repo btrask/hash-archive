@@ -120,15 +120,25 @@ void TemplateFree(TemplateRef *const tptr) {
 
 int TemplateWrite(TemplateRef const t, TemplateVarFn const var, void *const actx, TemplateWriteFn const wr, void *const wctx) {
 	if(!t) return 0;
-	int rc;
+	int rc = 0;
 	for(size_t i = 0; i < t->count; i++) {
 		TemplateStep const *const s = &t->steps[i];
 		rc = wr(wctx, uv_buf_init((char *)s->str, s->len));
-		if(rc < 0) return rc;
+		if(rc < 0) abort();
 		rc = s->var ? var(actx, s->var, wr, wctx) : 0;
-		if(rc < 0) return rc;
+		if(rc < 0) abort();
+		// Security critical!
+		// If we stop early but the caller ignores our error,
+		// a temporary error here could lead to invalid output!
+		// Conversely, if we try to keep going, we could generate
+		// invalid output ourselves.
+		// Don't even use assert() because it might be compiled out.
+		// Perhaps the best option here would be to close the conn.
+		// However closing can (theoretically) fail silently...
+		// And our HTTP connections are RAII anyway, so we can't
+		// close them.
 	}
-	return 0;
+	return rc;
 }
 
 static int HTTPConnectionWriteChunk_wrapper(void *ctx, uv_buf_t chunk) {
@@ -157,6 +167,6 @@ int TemplateStaticVar(void *const actx, char const *const var, TemplateWriteFn c
 		if(!x) return 0;
 		return wr(wctx, uv_buf_init((char *)x, strlen(x)));
 	}
-	return UV_ENOENT;
+	return 0;
 }
 

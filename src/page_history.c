@@ -8,6 +8,8 @@
 #include "page.h"
 #include "db.h"
 
+#define STR_LEN(x) (x), (sizeof(x)-1)
+
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
 static TemplateRef entry = NULL;
@@ -23,6 +25,44 @@ typedef struct {
 	unsigned char hashes[HASH_ALGO_MAX][HASH_DIGEST_MAX];
 } response_t;
 
+static char *item_html_obj(hash_uri_t const *const obj) {
+	char uri[URI_MAX];
+	int rc = hash_uri_format(obj, uri, sizeof(uri));
+	if(rc < 0) return NULL;
+	return item_html(obj->type, "", uri, false);
+}
+static int hist_var(void *const actx, char const *const var, TemplateWriteFn const wr, void *const wctx) {
+	response_t const *const res = actx;
+
+	if(0 == strcmp(var, "date")) return wr(wctx, uv_buf_init((char *)STR_LEN("test")));
+	if(0 == strcmp(var, "dates")) return wr(wctx, uv_buf_init((char *)STR_LEN("test")));
+
+	hash_uri_type type = LINK_NONE;
+	if(0 == strcmp(var, "hash-uri-list")) type = LINK_HASH_URI;
+	if(0 == strcmp(var, "named-info-list")) type = LINK_NAMED_INFO;
+	if(0 == strcmp(var, "multihash-list")) type = LINK_MULTIHASH;
+	if(0 == strcmp(var, "prefix-list")) type = LINK_PREFIX;
+	if(0 == strcmp(var, "ssb-list")) type = LINK_SSB;
+	if(0 == strcmp(var, "magnet-list")) type = LINK_MAGNET;
+	if(LINK_NONE == type) return 0;
+
+	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
+		if(!hash_algo_names[i]) continue;
+		hash_uri_t const obj[1] = {{
+			.type = type,
+			.algo = i,
+			.buf = (unsigned char *)res->hashes[i],
+			.len = res->hlen[i],
+		}};
+//		if(obj->len <= 0) continue;
+		char *x = item_html_obj(obj);
+		if(!x) return UV_ENOMEM;
+		int rc = wr(wctx, uv_buf_init(x, strlen(x)));
+		free(x); x = NULL;
+		if(rc < 0) return rc;
+	}
+	return 0;
+}
 
 int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	int rc = 0;
@@ -93,8 +133,8 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 
 
 	for(size_t j = 0; j < i; j++) {
-		TemplateWriteHTTPChunk(entry, TemplateStaticVar, &args, conn);
 		fprintf(stderr, "%llu\n", (unsigned long long)responses[j]->time);
+		TemplateWriteHTTPChunk(entry, hist_var, &responses[i], conn);
 	}
 
 
