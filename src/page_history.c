@@ -1,6 +1,7 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#include <string.h>
 #include "util/hash.h"
 #include "util/html.h"
 #include "util/url.h"
@@ -13,6 +14,16 @@ static TemplateRef entry = NULL;
 static TemplateRef error = NULL;
 static TemplateRef outdated = NULL;
 
+typedef struct {
+	uint64_t time;
+	int status;
+	char type[255+1];
+	uint64_t length;
+	size_t hlen[HASH_ALGO_MAX];
+	unsigned char hashes[HASH_ALGO_MAX][HASH_DIGEST_MAX];
+} response_t;
+
+
 int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	int rc = 0;
 	if(!header) {
@@ -22,6 +33,9 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		template_load("history-error.html", &error);
 		template_load("history-outdated.html", &outdated);
 	}
+
+	response_t responses[30][1] = {};
+	size_t i = 0;
 
 {
 	char surt[URI_MAX];
@@ -39,7 +53,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	DB_val key[1];
 	HXURLSurtAndTimeIDRange1(range, txn, surt);
 	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
-	for(; rc >= 0; rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
+	for(; rc >= 0 && i < numberof(responses); i++, rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
 		strarg_t surt;
 		uint64_t time, id;
 		HXURLSurtAndTimeIDKeyUnpack(key, txn, &surt, &time, &id);
@@ -52,7 +66,14 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		strarg_t const type = db_read_string(res_val, txn);
 		uint64_t const length = db_read_uint64(res_val);
 
-		fprintf(stderr, "%s, %d, %s, %llu\n", url, status, type, (unsigned long long)length);
+		responses[i]->time = time;
+		responses[i]->status = status;
+		strlcpy(responses[i]->type, type, sizeof(responses[i]->type));
+		responses[i]->length = length;
+		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
+			size_t x = db_read_blob(res_val, responses[i]->hashes[j], HASH_DIGEST_MAX);
+			responses[i]->hlen[j] = x;
+		}
 	}
 
 	db_cursor_close(cursor); cursor = NULL;
@@ -68,8 +89,16 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
 	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
 	HTTPConnectionBeginBody(conn);
-	TemplateWriteHTTPChunk(header, &TemplateStaticCBs, &args, conn);
-	TemplateWriteHTTPChunk(footer, &TemplateStaticCBs, &args, conn);
+	TemplateWriteHTTPChunk(header, TemplateStaticVar, &args, conn);
+
+
+	for(size_t j = 0; j < i; j++) {
+		TemplateWriteHTTPChunk(entry, TemplateStaticVar, &args, conn);
+		fprintf(stderr, "%llu\n", (unsigned long long)responses[j]->time);
+	}
+
+
+	TemplateWriteHTTPChunk(footer, TemplateStaticVar, &args, conn);
 	HTTPConnectionWriteChunkEnd(conn);
 	HTTPConnectionEnd(conn);
 

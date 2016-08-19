@@ -117,63 +117,46 @@ void TemplateFree(TemplateRef *const tptr) {
 //	assert_zeroed(t, 1);
 	FREE(tptr); t = NULL;
 }
-int TemplateWrite(TemplateRef const t, TemplateArgCBs const *const cbs, void const *const actx, TemplateWritev const writev, void *wctx) {
+
+int TemplateWrite(TemplateRef const t, TemplateVarFn const var, void *const actx, TemplateWriteFn const wr, void *const wctx) {
 	if(!t) return 0;
-
-	uv_buf_t *output = calloc(t->count * 2, sizeof(uv_buf_t));
-	char **vals = calloc(t->count, sizeof(char *));
-	if(!output || !vals) {
-		FREE(&output);
-		FREE(&vals);
-		return UV_ENOMEM;
-	}
-
+	int rc;
 	for(size_t i = 0; i < t->count; i++) {
 		TemplateStep const *const s = &t->steps[i];
-		char *const val = s->var ? cbs->lookup(actx, s->var) : NULL;
-		size_t const len = val ? strlen(val) : 0;
-		output[i*2+0] = uv_buf_init((char *)s->str, s->len);
-		output[i*2+1] = uv_buf_init((char *)val, len);
-		vals[i] = val;
+		rc = wr(wctx, uv_buf_init((char *)s->str, s->len));
+		if(rc < 0) return rc;
+		rc = s->var ? var(actx, s->var, wr, wctx) : 0;
+		if(rc < 0) return rc;
 	}
-
-	int rc = writev(wctx, output, t->count * 2);
-
-	FREE(&output);
-
-	for(size_t i = 0; i < t->count; i++) {
-		TemplateStep const *const s = &t->steps[i];
-		if(!s->var) continue;
-		if(cbs->free) cbs->free(actx, s->var, &vals[i]);
-		else vals[i] = NULL;
-	}
-//	assert_zeroed(vals, t->count);
-	FREE(&vals);
-
-	return rc;
-}
-int TemplateWriteHTTPChunk(TemplateRef const t, TemplateArgCBs const *const cbs, void const *const actx, HTTPConnectionRef const conn) {
-	return TemplateWrite(t, cbs, actx, (TemplateWritev)HTTPConnectionWriteChunkv, conn);
-}
-static int async_fs_write_wrapper(uv_file const *const fdptr, uv_buf_t parts[], unsigned int const count) {
-	return async_fs_writeall(*fdptr, parts, count, -1);
-}
-int TemplateWriteFile(TemplateRef const t, TemplateArgCBs const *const cbs, void const *const actx, uv_file const file) {
-	assertf(sizeof(void *) >= sizeof(file), "Can't cast uv_file (%ld) to void * (%ld)", (long)sizeof(file), (long)sizeof(void *));
-	return TemplateWrite(t, cbs, actx, (TemplateWritev)async_fs_write_wrapper, (uv_file *)&file);
+	return 0;
 }
 
-static char *TemplateStaticLookup(void const *const ptr, char const *const var) {
-	TemplateStaticArg const *args = ptr;
+static int HTTPConnectionWriteChunk_wrapper(void *ctx, uv_buf_t chunk) {
+	HTTPConnectionRef const conn = ctx;
+	return HTTPConnectionWriteChunkv(ctx, &chunk, 1);
+}
+static int async_fs_write_wrapper(void *ctx, uv_buf_t chunk) {
+	uv_file const *const fdptr = ctx;
+	return async_fs_writeall(*fdptr, &chunk, 1, -1);
+}
+
+int TemplateWriteHTTPChunk(TemplateRef const t, TemplateVarFn const var, void *const actx, HTTPConnectionRef const conn) {
+	return TemplateWrite(t, var, actx, HTTPConnectionWriteChunk_wrapper, conn);
+}
+int TemplateWriteFile(TemplateRef const t, TemplateVarFn const var, void *const actx, uv_file const file) {
+	uv_file fd = file;
+	return TemplateWrite(t, var, actx, async_fs_write_wrapper, &fd);
+}
+
+int TemplateStaticVar(void *const actx, char const *const var, TemplateWriteFn const wr, void *const wctx) {
+	TemplateStaticArg const *args = actx;
 	assertf(args, "TemplateStaticLookup args required");
-	while(args->var) {
-		if(0 == strcmp(args->var, var)) return (char *)args->val;
-		args++;
+	for(; args->var; args++) {
+		if(0 != strcmp(args->var, var)) continue;
+		char const *const x = args->val;
+		if(!x) return 0;
+		return wr(wctx, uv_buf_init((char *)x, strlen(x)));
 	}
-	return NULL;
+	return UV_ENOENT;
 }
-TemplateArgCBs const TemplateStaticCBs = {
-	.lookup = TemplateStaticLookup,
-	.free = NULL,
-};
 

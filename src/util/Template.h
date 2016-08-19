@@ -6,23 +6,19 @@
 
 typedef struct Template* TemplateRef;
 
-typedef struct {
-	char *(*lookup)(void const *const ctx, char const *const var);
-	void (*free)(void const *const ctx, char const *const var, char **const val);
-} TemplateArgCBs;
-
-typedef int (*TemplateWritev)(void *, uv_buf_t[], unsigned int);
+typedef int (*TemplateWriteFn)(void *, uv_buf_t);
+typedef int (*TemplateVarFn)(void *, char const *, TemplateWriteFn, void *);
 
 int TemplateCreate(char const *const str, TemplateRef *const out);
 int TemplateCreateFromPath(char const *const path, TemplateRef *const out);
 void TemplateFree(TemplateRef *const tptr);
-int TemplateWrite(TemplateRef const t, TemplateArgCBs const *const cbs, void const *const actx, TemplateWritev const writev, void *wctx);
-int TemplateWriteHTTPChunk(TemplateRef const t, TemplateArgCBs const *const cbs, void const *actx, HTTPConnectionRef const conn);
-int TemplateWriteFile(TemplateRef const t, TemplateArgCBs const *const cbs, void const *actx, uv_file const file);
+int TemplateWrite(TemplateRef const t, TemplateVarFn const var, void *const actx, TemplateWriteFn const wr, void *const wctx);
+int TemplateWriteHTTPChunk(TemplateRef const t, TemplateVarFn const var, void *actx, HTTPConnectionRef const conn);
+int TemplateWriteFile(TemplateRef const t, TemplateVarFn const var, void *actx, uv_file const file);
 
 typedef struct {
 	char const *var;
 	char const *val;
 } TemplateStaticArg;
-extern TemplateArgCBs const TemplateStaticCBs;
+int TemplateStaticVar(void *, char const *, TemplateWriteFn, void *);
 

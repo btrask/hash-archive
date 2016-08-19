@@ -54,7 +54,7 @@ int page_index(HTTPConnectionRef const conn) {
 	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
 	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
 	HTTPConnectionBeginBody(conn);
-	TemplateWriteHTTPChunk(index, &TemplateStaticCBs, &args, conn);
+	TemplateWriteHTTPChunk(index, TemplateStaticVar, &args, conn);
 	HTTPConnectionWriteChunkEnd(conn);
 	HTTPConnectionEnd(conn);
 
