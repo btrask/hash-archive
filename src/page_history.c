@@ -8,6 +8,17 @@
 #include "page.h"
 #include "db.h"
 
+// TODO: Get rid of this duplication...
+#define MIN(a, b) ({ \
+	__typeof__(a) const __a = (a); \
+	__typeof__(b) const __b = (b); \
+	__a < __b ? __a : __b; \
+})
+#define MAX(a, b) ({ \
+	__typeof__(a) const __a = (a); \
+	__typeof__(b) const __b = (b); \
+	__a > __b ? __a : __b; \
+})
 #define STR_LEN(x) (x), (sizeof(x)-1)
 
 static TemplateRef header = NULL;
@@ -16,23 +27,68 @@ static TemplateRef entry = NULL;
 static TemplateRef error = NULL;
 static TemplateRef outdated = NULL;
 
-typedef struct {
+size_t const algos[] = {
+	HASH_ALGO_SHA256,
+	HASH_ALGO_SHA384,
+	HASH_ALGO_SHA512,
+	HASH_ALGO_SHA1,
+//	HASH_ALGO_MD5,
+};
+bool const deprecated[HASH_ALGO_MAX] = {
+	[HASH_ALGO_SHA1] = true,
+//	[HASH_ALGO_MD5] = true,
+};
+
+
+struct response {
 	uint64_t time;
 	int status;
 	char type[255+1];
 	uint64_t length;
 	size_t hlen[HASH_ALGO_MAX];
 	unsigned char hashes[HASH_ALGO_MAX][HASH_DIGEST_MAX];
-} response_t;
+	struct response *next;
+	struct response *prev;
+};
+
+static bool res_eq(struct response const *const a, struct response const *const b) {
+	if(a == b) return true;
+	if(!a || !b) return false;
+
+	// Don't merge responses that aren't "OK".
+	if(200 != a->status || 200 != b->status) return false;
+
+	// It's important that types match.
+	if(0 != strcmp(a->type, b->type)) return false;
+
+	// Why not?
+	if(a->length != b->length) return false;
+
+	// We only compare the prefix. For empty hashes this is zero which is good.
+	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
+		size_t const len = MIN(a->hlen[i], b->hlen[i]);
+		if(0 != memcmp(a->hashes[i], b->hashes[i], len)) return false;
+	}
+	return true;
+}
+static void res_merge_list(struct response *const responses, size_t const len) {
+	for(size_t i = 1; i < len; i++) {
+		bool const eq = res_eq(&responses[i-1], &responses[i]);
+		if(!eq) continue;
+		responses[i-1].next = &responses[i];
+		responses[i].prev = &responses[i-1];
+	}
+}
+
 
 static char *item_html_obj(hash_uri_t const *const obj) {
 	char uri[URI_MAX];
 	int rc = hash_uri_format(obj, uri, sizeof(uri));
 	if(rc < 0) return NULL;
-	return item_html(obj->type, "", uri, false);
+	return item_html(obj->type, "", uri, deprecated[obj->algo]);
 }
 static int hist_var(void *const actx, char const *const var, TemplateWriteFn const wr, void *const wctx) {
-	response_t const *const res = actx;
+	struct response const *const res = actx;
 
 	if(0 == strcmp(var, "date")) return wr(wctx, uv_buf_init((char *)STR_LEN("test")));
 	if(0 == strcmp(var, "dates")) return wr(wctx, uv_buf_init((char *)STR_LEN("test")));
@@ -46,13 +102,14 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 	if(0 == strcmp(var, "magnet-list")) type = LINK_MAGNET;
 	if(LINK_NONE == type) return 0;
 
-	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
-		if(!hash_algo_names[i]) continue;
+	for(size_t i = 0; i < numberof(algos); i++) {
+		size_t const algo = algos[i];
+		if(!hash_algo_names[algo]) continue;
 		hash_uri_t const obj[1] = {{
 			.type = type,
-			.algo = i,
-			.buf = (unsigned char *)res->hashes[i],
-			.len = res->hlen[i],
+			.algo = algo,
+			.buf = (unsigned char *)res->hashes[algo],
+			.len = res->hlen[algo],
 		}};
 		if(obj->len <= 0) continue;
 		char *x = item_html_obj(obj);
@@ -74,7 +131,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		template_load("history-outdated.html", &outdated);
 	}
 
-	response_t responses[30][1] = {};
+	struct response responses[30] = {};
 	size_t i = 0;
 
 {
@@ -106,13 +163,13 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		strarg_t const type = db_read_string(res_val, txn);
 		uint64_t const length = db_read_uint64(res_val);
 
-		responses[i]->time = time;
-		responses[i]->status = status;
-		strlcpy(responses[i]->type, type, sizeof(responses[i]->type));
-		responses[i]->length = length;
+		responses[i].time = time;
+		responses[i].status = status;
+		strlcpy(responses[i].type, type, sizeof(responses[i].type));
+		responses[i].length = length;
 		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
-			size_t x = db_read_blob(res_val, responses[i]->hashes[j], HASH_DIGEST_MAX);
-			responses[i]->hlen[j] = x;
+			size_t x = db_read_blob(res_val, responses[i].hashes[j], HASH_DIGEST_MAX);
+			responses[i].hlen[j] = x;
 		}
 	}
 
@@ -120,6 +177,8 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 }
+
+	res_merge_list(responses, numberof(responses));
 
 
 	TemplateStaticArg args[] = {
@@ -133,6 +192,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 
 
 	for(size_t j = 0; j < i; j++) {
+		if(responses[j].prev) continue; // Skip duplicates
 		TemplateWriteHTTPChunk(entry, hist_var, &responses[j], conn);
 	}
 
