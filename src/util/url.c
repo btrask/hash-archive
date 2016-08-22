@@ -21,16 +21,16 @@ static void strlower(char *const str) {
 int url_parse(char const *const URL, url_t *const out) {
 	assert(out);
 	if(!URL) return -EINVAL;
-	int len = 0;
 	out->protocol[0] = '\0';
 	out->host[0] = '\0';
 	out->path[0] = '\0';
-	sscanf(URL, PROTOCOL_FMT "://" HOST_FMT PATH_FMT "%n", out->protocol, out->host, out->path, &len);
-	if(0 == len) return -EINVAL;
-	if('\0' != URL[len] && '#' != URL[len]) return -EINVAL;
+	out->query[0] = '\0';
+	sscanf(URL, PROTOCOL_FMT "://" HOST_FMT PATH_FMT QUERY_FMT,
+		out->protocol, out->host, out->path, out->query);
 	if('\0' == out->protocol[0]) return -EINVAL;
 	if('\0' == out->host[0]) return -EINVAL;
 	if('\0' != out->path[0] && '/' != out->path[0]) return -EINVAL;
+	if('\0' != out->query[0] && '?' != out->query[0]) return -EINVAL;
 	strlower(out->protocol);
 	strlower(out->host);
 	return 0;
@@ -39,7 +39,8 @@ int url_format(url_t const *const URL, char *const out, size_t const max) {
 	assert(out);
 	assert(max > 0);
 	if(!URL) return -EINVAL;
-	int rc = snprintf(out, max, "%s://%s%s", URL->protocol, URL->host, URL->path);
+	int rc = snprintf(out, max, "%s://%s%s%s",
+		URL->protocol, URL->host, URL->path, URL->query);
 	if(rc >= max) return -ENAMETOOLONG;
 	if(rc < 0) return rc;
 	return 0;

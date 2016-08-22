@@ -8,12 +8,15 @@
 #define DOMAIN_MAX (255+1)
 #define DOMAIN_FMT "%255[a-zA-Z0-9.-]"
 #define PATH_MAX (1023+1)
-#define PATH_FMT "%1023[^#]"
+#define PATH_FMT "%1023[^?#]"
+#define QUERY_MAX (1023+1)
+#define QUERY_FMT "%1023[^#]"
 
 typedef struct {
 	char protocol[PROTOCOL_MAX]; // Not including trailing colon
 	char host[HOST_MAX]; // Includes port
-	char path[PATH_MAX]; // Includes query
+	char path[PATH_MAX];
+	char query[QUERY_MAX];
 	// Fragment is stripped
 } url_t;
 int url_parse(char const *const URL, url_t *const out);
