@@ -26,6 +26,9 @@
 	free(*__x); *__x = NULL; \
 } while(0)
 
+// TODO
+int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);
+
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
 static TemplateRef entry = NULL;
@@ -227,8 +230,13 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	HTTPConnectionBeginBody(conn);
 	TemplateWriteHTTPChunk(header, TemplateStaticVar, &args, conn);
 
-	if(true) { // TODO
+	uint64_t const now = time(NULL);
+	if(count <= 0 || responses[0].time < now - 60*60*24) {
 		TemplateWriteHTTPChunk(outdated, TemplateStaticVar, &args, conn);
+		rc = queue_add(now, URL, ""); // TODO: Get client
+		if(rc < 0) {
+			alogf("queue error: %s\n", uv_strerror(rc));
+		}
 	}
 
 	for(size_t i = 0; i < count; i++) {

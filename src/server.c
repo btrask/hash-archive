@@ -176,24 +176,6 @@ cleanup:
 static void init(void *ignore) {
 	HTTPServerRef server = NULL;
 	int rc;
-	rc = HTTPServerCreate(listener, NULL, &server);
-	if(rc < 0) goto cleanup;
-	rc = HTTPServerListen(server, SERVER_RAW_ADDR, SERVER_RAW_PORT);
-	if(rc < 0) goto cleanup;
-	int const port = SERVER_RAW_PORT;
-	alogf("Hash Archive running at http://localhost:%d/\n", port);
-	server_raw = server; server = NULL;
-
-
-
-/*	{ // TODO: debug
-	int status = 0;
-	HTTPHeadersRef headers = NULL;
-	uint64_t length = 0;
-	hasher_t *hasher = NULL;
-	rc = url_fetch("http://localhost:8000/", "test", &status, &headers, &length, &hasher);
-	alogf("got result %s (%d): %d, %s\n", uv_strerror(rc), rc, status, HTTPHeadersGet(headers, "content-type"));
-	}*/
 
 	rc = hx_db_load();
 	if(rc < 0) goto cleanup;
@@ -202,8 +184,14 @@ static void init(void *ignore) {
 	for(size_t i = 0; i < QUEUE_WORKERS; i++) {
 		async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
 	}
-	queue_add(time(NULL), "http://localhost:8000/", "test");
 
+	rc = HTTPServerCreate(listener, NULL, &server);
+	if(rc < 0) goto cleanup;
+	rc = HTTPServerListen(server, SERVER_RAW_ADDR, SERVER_RAW_PORT);
+	if(rc < 0) goto cleanup;
+	int const port = SERVER_RAW_PORT;
+	alogf("Hash Archive running at http://localhost:%d/\n", port);
+	server_raw = server; server = NULL;
 
 cleanup:
 	HTTPServerFree(&server);

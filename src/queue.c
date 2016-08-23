@@ -149,6 +149,10 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	if(rc < 0) goto cleanup;
 	rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
 	if(rc < 0) goto cleanup;
+
+	// TODO: Verify that this URL isn't already queued,
+	// and hasn't been fetched in the past 24 hours.
+
 	HXTimeIDQueuedURLAndClientKeyPack(key, txn, time, id, URL, client);
 	rc = db_put(txn, key, NULL, 0); // DB_NOOVERWRITE_FAST
 	if(rc < 0) goto cleanup;
@@ -162,7 +166,8 @@ cleanup:
 	hx_db_close(&db);
 	return rc;
 }
-int queue_work(void) {
+
+static void queue_work(void) {
 	uint64_t then;
 	uint64_t old_id;
 	char URL[URI_MAX];
@@ -198,6 +203,7 @@ int queue_work(void) {
 	now = time(NULL);
 	rc = url_fetch(URL, client, &status, &headers, &length, &hasher);
 	if(rc < 0) goto cleanup;
+	// TODO: Fetch errors should be recorded, not discarded.
 
 	type = HTTPHeadersGet(headers, "Content-Type");
 
@@ -217,14 +223,13 @@ cleanup:
 	hx_db_close(&db);
 	HTTPHeadersFree(&headers);
 	hasher_free(&hasher);
-	return rc;
+
+	if(rc >= 0) return;
+
+	alogf("Worker error: %s\n", hx_strerror(rc));
+	async_sleep(1000*5);
 }
 void queue_work_loop(void *ignored) {
-	int rc = 0;
-	for(;;) {
-		rc = queue_work();
-		if(rc < 0) break;
-	}
-	alogf("Worker terminated: %s\n", hx_strerror(rc));
+	for(;;) queue_work();
 }
 
