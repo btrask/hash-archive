@@ -4,6 +4,7 @@
 #include "util/hash.h"
 #include "util/html.h"
 #include "page.h"
+#include "db.h"
 
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
@@ -22,6 +23,36 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 		template_load("sources-weak.html", &weak_hash);
 	}
 	int rc = 0;
+
+{
+
+	DB_env *db = NULL;
+	DB_txn *txn = NULL;
+	DB_cursor *cursor = NULL;
+
+	rc = hx_db_open(&db);
+	if(rc < 0) goto cleanup;
+	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
+	if(rc < 0) goto cleanup;
+	rc = db_cursor_open(txn, &cursor);
+	if(rc < 0) goto cleanup;
+
+
+
+
+cleanup:
+	db_cursor_close(cursor); cursor = NULL;
+	db_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+
+
+
+
+
+}
+
+
+
 
 	HTTPConnectionWriteResponse(conn, 200, "OK");
 	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
