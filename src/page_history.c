@@ -4,6 +4,7 @@
 #include <string.h>
 #include "util/hash.h"
 #include "util/html.h"
+#include "util/strext.h"
 #include "util/url.h"
 #include "page.h"
 #include "db.h"
@@ -20,6 +21,10 @@
 	__a > __b ? __a : __b; \
 })
 #define STR_LEN(x) (x), (sizeof(x)-1)
+#define FREE(ptrptr) do { \
+	__typeof__(ptrptr) const __x = (ptrptr); \
+	free(*__x); *__x = NULL; \
+} while(0)
 
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
@@ -203,11 +208,17 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 
 	res_merge_list(responses, numberof(responses));
 
+	char *escaped = html_encode(URL);
+	char *link = direct_link_html(LINK_WEB_URL, URL);
+	char *wayback_url = aasprintf("https://web.archive.org/web/*/%s", escaped);
+	char *google_url = aasprintf("https://webcache.googleusercontent.com/search?q=cache:%s", escaped);
+	char *virustotal_url = aasprintf("https://www.virustotal.com/en/url/%s", escaped);
+
 	TemplateStaticArg args[] = {
-		{"url-link", NULL},
-		{"wayback-url", NULL},
-		{"google-url", NULL},
-		{"virustotal-url", NULL},
+		{"url-link", link},
+		{"wayback-url", wayback_url},
+		{"google-url", google_url},
+		{"virustotal-url", virustotal_url},
 		{NULL, NULL},
 	};
 	HTTPConnectionWriteResponse(conn, 200, "OK");
@@ -215,6 +226,10 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
 	HTTPConnectionBeginBody(conn);
 	TemplateWriteHTTPChunk(header, TemplateStaticVar, &args, conn);
+
+	if(true) { // TODO
+		TemplateWriteHTTPChunk(outdated, TemplateStaticVar, &args, conn);
+	}
 
 	for(size_t i = 0; i < count; i++) {
 		if(responses[i].prev) continue; // Skip duplicates
@@ -228,6 +243,12 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	TemplateWriteHTTPChunk(footer, TemplateStaticVar, &args, conn);
 	HTTPConnectionWriteChunkEnd(conn);
 	HTTPConnectionEnd(conn);
+
+	FREE(&escaped);
+	FREE(&link);
+	FREE(&wayback_url);
+	FREE(&google_url);
+	FREE(&virustotal_url);
 
 	return 0;
 }
