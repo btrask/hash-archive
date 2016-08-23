@@ -8,6 +8,7 @@
 #include <async/http/QueryString.h>
 #include "util/strext.h"
 #include "util/hash.h"
+#include "util/path.h"
 #include "util/url.h"
 #include "page.h"
 #include "db.h"
@@ -95,6 +96,35 @@ static int GET_sources(HTTPConnectionRef const conn, HTTPMethod const method, st
 	if('\0' == hash[0]) return -1;
 	return HTTPError(page_sources(conn, hash));
 }
+static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
+
+	url_t obj[1];
+	int rc = url_parse(URI, obj);
+	if(rc < 0) return HTTPError(rc);
+
+	// TODO: Decode obj->path.
+
+	char path[4095+1];
+	rc = path_subpath_secure("/home/user/Code/hash-archive/static/", obj->path, path, sizeof(path)); // TODO
+	if(rc < 0) return HTTPError(rc);
+
+	strarg_t const type = path_exttype(path_extname(path));
+	rc = HTTPConnectionSendFile(conn, path, type, -1);
+	if(UV_EPIPE == rc) rc =  0;
+	if(UV_EISDIR == rc) {
+		str_t location[URI_MAX]; location[0] = '\0';
+		rc = snprintf(location, sizeof(location), "%s/", URI);
+		if(rc >= sizeof(location)) return 414; // Request-URI Too Large
+		if(rc < 0) return 500;
+		// TODO: HTTPConnection needs to validate the headers it writes.
+		// Must be basic ASCII, no line breaks or -- (HTTP comment)?
+		HTTPConnectionSendRedirect(conn, 301, location);
+		return 0;
+	}
+	if(rc < 0) return HTTPError(rc);
+	return 0;
+}
 
 static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef const conn) {
 	assert(server);
@@ -132,6 +162,7 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	rc = rc >= 0 ? rc : POST_lookup(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_history(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_sources(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : GET_static(conn, method, URI, headers);
 	if(rc < 0) rc = 404;
 	if(rc > 0) HTTPConnectionSendStatus(conn, rc);
 

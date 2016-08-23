@@ -1,0 +1,25 @@
+# Okay, rationale.
+# Think of Hash Archive like an open proxy.
+# It accepts GET requests and forwards them to other servers.
+# Hash Archive itself is not a bot, but any bots crawling it
+# get proxied to other sites.
+# That's good for us, because it builds our index,
+# but unfair to those other sites.
+# Ideally, our robots.txt would be proxied from every other
+# site on the web, so that only sites that block robots
+# would block proxied robots.
+# But of course, that's not so easy to do.
+
+# An alternative option is to only proxy incoming requests via POST.
+# However, that's bad for us, because it means our users have to
+# click a button to update our pages.
+# Using JavaScript doesn't help either, because some bots run JS these days.
+
+# And to be fair, updating a page because a GET request is not really
+# a side effect from our point of view. It's more like caching.
+
+# Alternative suggestions are welcome.
+
+User-agent: *
+Disallow: /history/
+
