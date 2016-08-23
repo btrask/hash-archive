@@ -95,16 +95,20 @@ static ssize_t get_responses(strarg_t const URL, struct response *const out, siz
 	DB_env *db = NULL;
 	DB_txn *txn = NULL;
 	DB_cursor *cursor = NULL;
+	size_t i = 0;
 
 	rc = hx_db_open(&db);
+	if(rc < 0) goto cleanup;
 	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
+	if(rc < 0) goto cleanup;
 	rc = db_cursor_open(txn, &cursor);
+	if(rc < 0) goto cleanup;
 
 	DB_range range[1];
 	DB_val key[1];
 	HXURLSurtAndTimeIDRange1(range, txn, surt);
-	int i = 0;
 	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
+	if(rc < 0 && DB_NOTFOUND != rc) goto cleanup;
 	for(; rc >= 0 && i < max; i++, rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
 		strarg_t surt;
 		uint64_t time, id;
@@ -113,6 +117,7 @@ static ssize_t get_responses(strarg_t const URL, struct response *const out, siz
 		DB_val res_key[1], res_val[1];
 		HXTimeIDToResponseKeyPack(res_key, time, id);
 		rc = db_get(txn, res_key, res_val);
+		if(rc < 0) goto cleanup;
 		strarg_t const url = db_read_string(res_val, txn);
 		int const status = db_read_uint64(res_val) - 0xffff;
 		strarg_t const type = db_read_string(res_val, txn);
@@ -127,10 +132,13 @@ static ssize_t get_responses(strarg_t const URL, struct response *const out, siz
 			out[i].hlen[j] = x;
 		}
 	}
+	rc = 0;
 
+cleanup:
 	db_cursor_close(cursor); cursor = NULL;
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
+	if(rc < 0) return rc;
 	return i;
 }
 
