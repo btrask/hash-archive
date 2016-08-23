@@ -196,7 +196,6 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 }
 
 int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
-	int rc = 0;
 	if(!header) {
 		template_load("history-header.html", &header);
 		template_load("history-footer.html", &footer);
@@ -204,6 +203,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		template_load("history-error.html", &error);
 		template_load("history-outdated.html", &outdated);
 	}
+	int rc = 0;
 
 	struct response responses[30] = {};
 	ssize_t count = get_responses(URL, responses, numberof(responses));

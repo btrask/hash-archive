@@ -13,7 +13,27 @@ static TemplateRef short_hash = NULL;
 static TemplateRef weak_hash = NULL;
 
 int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
-	HTTPConnectionSendStatus(conn, 200);
+	if(!header) {
+		template_load("sources-header.html", &header);
+		template_load("sources-footer.html", &footer);
+		template_load("sources-entry.html", &entry);
+		template_load("sources-notfound.html", &notfound);
+		template_load("sources-short.html", &short_hash);
+		template_load("sources-weak.html", &weak_hash);
+	}
+	int rc = 0;
+
+	HTTPConnectionWriteResponse(conn, 200, "OK");
+	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
+	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
+	HTTPConnectionBeginBody(conn);
+	TemplateWriteHTTPChunk(header, NULL, NULL, conn);
+
+
+	TemplateWriteHTTPChunk(footer, NULL, NULL, conn);
+	HTTPConnectionWriteChunkEnd(conn);
+	HTTPConnectionEnd(conn);
+
 	return 0;
 }
 
