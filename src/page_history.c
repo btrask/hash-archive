@@ -90,8 +90,22 @@ static char *item_html_obj(hash_uri_t const *const obj) {
 static int hist_var(void *const actx, char const *const var, TemplateWriteFn const wr, void *const wctx) {
 	struct response const *const res = actx;
 
-	if(0 == strcmp(var, "date")) return wr(wctx, uv_buf_init((char *)STR_LEN("test")));
-	if(0 == strcmp(var, "dates")) return wr(wctx, uv_buf_init((char *)STR_LEN("test")));
+	if(0 == strcmp(var, "date")) {
+		char *date = date_html("As of ", res->time);
+		int rc = wr(wctx, uv_buf_init(date, strlen(date)));
+		free(date); date = NULL;
+		return rc;
+	}
+	if(0 == strcmp(var, "dates")) {
+		struct response const *r = res->next;
+		for(; r; r = r->next) {
+			char *date = date_html("Also seen ", r->time);
+			int rc = wr(wctx, uv_buf_init(date, strlen(date)));
+			free(date); date = NULL;
+			if(rc < 0) return rc;
+		}
+		return 0;
+	}
 
 	hash_uri_type type = LINK_NONE;
 	if(0 == strcmp(var, "hash-uri-list")) type = LINK_HASH_URI;

@@ -8,6 +8,33 @@
 #include "util/strext.h"
 #include "page.h"
 
+char *date_html(char const *const label_escaped, time_t const ts) {
+	static char const *const months[] = {
+		"January",
+		"February",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"August",
+		"September",
+		"October",
+		"November",
+		"December",
+	};
+	static char const *const suffix[] =
+		{"th","st","nd","rd","th","th","th","th","th","th"};
+	char x[31+1];
+	struct tm t[1];
+	gmtime_r(&ts, t); // TODO: Error checking?
+	return aasprintf("<div class=\"date\">%s%s %d<sup>%s</sup>, %d</div>",
+		label_escaped,
+		months[t->tm_mon],
+		t->tm_mday,
+		suffix[t->tm_mday%10],
+		1900+t->tm_year);
+}
 char *link_html(hash_uri_type const t, strarg_t const URI_unsafe) {
 	char *r = NULL;
 	char *escaped = html_encode(URI_unsafe);

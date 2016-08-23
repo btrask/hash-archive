@@ -14,6 +14,7 @@
 typedef char str_t;
 typedef char const *strarg_t;
 
+char *date_html(char const *const label_escaped, time_t const ts);
 char *link_html(hash_uri_type const t, strarg_t const URI_unsafe);
 char *item_html(hash_uri_type const type, strarg_t const label_escaped, strarg_t const URI_unsafe, bool const deprecated);
 char *direct_link_html(hash_uri_type const type, strarg_t const URI_unsafe);
