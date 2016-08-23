@@ -60,6 +60,7 @@ OBJECTS := \
 	$(BUILD_DIR)/src/util/strext.o \
 	$(BUILD_DIR)/src/util/hasher.o \
 	$(BUILD_DIR)/src/util/hash.o \
+	$(BUILD_DIR)/src/util/path.o \
 	$(BUILD_DIR)/src/util/url.o \
 	$(BUILD_DIR)/src/util/Template.o \
 	$(BUILD_DIR)/src/util/html.o \
