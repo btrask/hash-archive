@@ -21,17 +21,30 @@ static void strlower(char *const str) {
 int url_parse(char const *const URL, url_t *const out) {
 	assert(out);
 	if(!URL) return -EINVAL;
-	out->protocol[0] = '\0';
+	out->scheme[0] = '\0';
 	out->host[0] = '\0';
 	out->path[0] = '\0';
 	out->query[0] = '\0';
-	sscanf(URL, PROTOCOL_FMT "://" HOST_FMT PATH_FMT QUERY_FMT,
-		out->protocol, out->host, out->path, out->query);
-	if('\0' == out->protocol[0]) return -EINVAL;
-	if('\0' == out->host[0]) return -EINVAL;
+	if('/' == URL[0] && '/' == URL[1]) {
+		// Scheme-relative
+		sscanf(URL, "//" HOST_FMT PATH_FMT QUERY_FMT,
+			out->host, out->path, out->query);
+		if('\0' == out->host[0]) return -EINVAL;
+	} else if('/' == URL[0]) {
+		// Host-relative
+		sscanf(URL, PATH_FMT QUERY_FMT,
+			out->path, out->query);
+		if('/' != out->path[0]) return -EINVAL;
+	} else {
+		// Absolute
+		sscanf(URL, SCHEME_FMT "://" HOST_FMT PATH_FMT QUERY_FMT,
+			out->scheme, out->host, out->path, out->query);
+		if('\0' == out->scheme[0]) return -EINVAL;
+		if('\0' == out->host[0]) return -EINVAL;
+	}
 	if('\0' != out->path[0] && '/' != out->path[0]) return -EINVAL;
 	if('\0' != out->query[0] && '?' != out->query[0]) return -EINVAL;
-	strlower(out->protocol);
+	strlower(out->scheme);
 	strlower(out->host);
 	return 0;
 }
@@ -40,7 +53,7 @@ int url_format(url_t const *const URL, char *const out, size_t const max) {
 	assert(max > 0);
 	if(!URL) return -EINVAL;
 	int rc = snprintf(out, max, "%s://%s%s%s",
-		URL->protocol, URL->host, URL->path, URL->query);
+		URL->scheme, URL->host, URL->path, URL->query);
 	if(rc >= max) return -ENAMETOOLONG;
 	if(rc < 0) return rc;
 	return 0;

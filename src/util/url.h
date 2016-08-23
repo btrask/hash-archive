@@ -1,8 +1,8 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
-#define PROTOCOL_MAX (31+1)
-#define PROTOCOL_FMT "%31[^:]"
+#define SCHEME_MAX (31+1)
+#define SCHEME_FMT "%31[^:]"
 #define HOST_MAX (255+1)
 #define HOST_FMT "%255[^/]"
 #define DOMAIN_MAX (255+1)
@@ -13,7 +13,7 @@
 #define QUERY_FMT "%1023[^#]"
 
 typedef struct {
-	char protocol[PROTOCOL_MAX]; // Not including trailing colon
+	char scheme[SCHEME_MAX]; // Not including trailing colon
 	char host[HOST_MAX]; // Includes port
 	char path[PATH_MAX];
 	char query[QUERY_MAX];
