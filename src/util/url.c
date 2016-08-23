@@ -27,17 +27,17 @@ int url_parse(char const *const URL, url_t *const out) {
 	out->query[0] = '\0';
 	if('/' == URL[0] && '/' == URL[1]) {
 		// Scheme-relative
-		sscanf(URL, "//" HOST_FMT PATH_FMT QUERY_FMT,
+		sscanf(URL, "//" URL_HOST_FMT URL_PATH_FMT URL_QUERY_FMT,
 			out->host, out->path, out->query);
 		if('\0' == out->host[0]) return -EINVAL;
 	} else if('/' == URL[0]) {
 		// Host-relative
-		sscanf(URL, PATH_FMT QUERY_FMT,
+		sscanf(URL, URL_PATH_FMT URL_QUERY_FMT,
 			out->path, out->query);
 		if('/' != out->path[0]) return -EINVAL;
 	} else {
 		// Absolute
-		sscanf(URL, SCHEME_FMT "://" HOST_FMT PATH_FMT QUERY_FMT,
+		sscanf(URL, URL_SCHEME_FMT "://" URL_HOST_FMT URL_PATH_FMT URL_QUERY_FMT,
 			out->scheme, out->host, out->path, out->query);
 		if('\0' == out->scheme[0]) return -EINVAL;
 		if('\0' == out->host[0]) return -EINVAL;
@@ -64,7 +64,7 @@ int host_parse(char const *const host, host_t *const out) {
 	if(!host) return -EINVAL;
 	out->domain[0] = '\0';
 	out->port = 0;
-	sscanf(host, DOMAIN_FMT ":%u", out->domain, &out->port);
+	sscanf(host, URL_DOMAIN_FMT ":%u", out->domain, &out->port);
 	if('\0' == out->domain[0]) return -EINVAL;
 	if(out->port > UINT16_MAX) return -EINVAL;
 	return 0;
@@ -131,18 +131,18 @@ int url_normalize_surt(char const *const URL, char *const out, size_t const max)
 	if(!URL) return -EINVAL;
 	url_t url_parsed[1];
 	host_t host_parsed[1];
-	char domain_tmp[DOMAIN_MAX];
-	char host_tmp[HOST_MAX];
+	char domain_tmp[URL_DOMAIN_MAX];
+	char host_tmp[URL_HOST_MAX];
 	int rc = url_parse(URL, url_parsed);
 	if(rc < 0) return rc;
 	rc = host_parse(url_parsed->host, host_parsed);
 	if(rc < 0) return rc;
 	rc = domain_reverse(host_parsed->domain, domain_tmp, sizeof(domain_tmp));
 	if(rc < 0) return rc;
-	memcpy(host_parsed->domain, domain_tmp, DOMAIN_MAX);
+	memcpy(host_parsed->domain, domain_tmp, URL_DOMAIN_MAX);
 	rc = host_format(host_parsed, host_tmp, sizeof(host_tmp));
 	if(rc < 0) return rc;
-	memcpy(url_parsed->host, host_tmp, HOST_MAX);
+	memcpy(url_parsed->host, host_tmp, URL_HOST_MAX);
 	rc = url_format(url_parsed, out, max);
 	if(rc < 0) return rc;
 	return 0;
