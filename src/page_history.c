@@ -79,6 +79,52 @@ static void res_merge_list(struct response *const responses, size_t const len) {
 		responses[i].prev = &responses[i-1];
 	}
 }
+static ssize_t get_responses(strarg_t const URL, struct response *const out, size_t const max) {
+	char surt[URI_MAX];
+	int rc = url_normalize_surt(URL, surt, sizeof(surt));
+	if(rc < 0) return rc;
+
+	DB_env *db = NULL;
+	DB_txn *txn = NULL;
+	DB_cursor *cursor = NULL;
+
+	rc = hx_db_open(&db);
+	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
+	rc = db_cursor_open(txn, &cursor);
+
+	DB_range range[1];
+	DB_val key[1];
+	HXURLSurtAndTimeIDRange1(range, txn, surt);
+	int i = 0;
+	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
+	for(; rc >= 0 && i < max; i++, rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
+		strarg_t surt;
+		uint64_t time, id;
+		HXURLSurtAndTimeIDKeyUnpack(key, txn, &surt, &time, &id);
+
+		DB_val res_key[1], res_val[1];
+		HXTimeIDToResponseKeyPack(res_key, time, id);
+		rc = db_get(txn, res_key, res_val);
+		strarg_t const url = db_read_string(res_val, txn);
+		int const status = db_read_uint64(res_val) - 0xffff;
+		strarg_t const type = db_read_string(res_val, txn);
+		uint64_t const length = db_read_uint64(res_val);
+
+		out[i].time = time;
+		out[i].status = status;
+		strlcpy(out[i].type, type, sizeof(out[i].type));
+		out[i].length = length;
+		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
+			size_t x = db_read_blob(res_val, out[i].hashes[j], HASH_DIGEST_MAX);
+			out[i].hlen[j] = x;
+		}
+	}
+
+	db_cursor_close(cursor); cursor = NULL;
+	db_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+	return i;
+}
 
 
 static char *item_html_obj(hash_uri_t const *const obj) {
@@ -105,6 +151,12 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 			if(rc < 0) return rc;
 		}
 		return 0;
+	}
+	if(0 == strcmp(var, "error")) {
+		char x[31+1];
+		snprintf(x, sizeof(x), "%d", res->status);
+		// TODO: Print human-readable descriptions...
+		return wr(wctx, uv_buf_init(x, strlen(x)));
 	}
 
 	hash_uri_type type = LINK_NONE;
@@ -146,56 +198,16 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	}
 
 	struct response responses[30] = {};
-	size_t i = 0;
-
-{
-	char surt[URI_MAX];
-	rc = url_normalize_surt(URL, surt, sizeof(surt));
-
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
-	DB_cursor *cursor = NULL;
-
-	rc = hx_db_open(&db);
-	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
-	rc = db_cursor_open(txn, &cursor);
-
-	DB_range range[1];
-	DB_val key[1];
-	HXURLSurtAndTimeIDRange1(range, txn, surt);
-	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
-	for(; rc >= 0 && i < numberof(responses); i++, rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
-		strarg_t surt;
-		uint64_t time, id;
-		HXURLSurtAndTimeIDKeyUnpack(key, txn, &surt, &time, &id);
-
-		DB_val res_key[1], res_val[1];
-		HXTimeIDToResponseKeyPack(res_key, time, id);
-		rc = db_get(txn, res_key, res_val);
-		strarg_t const url = db_read_string(res_val, txn);
-		int const status = db_read_uint64(res_val) - 0xffff;
-		strarg_t const type = db_read_string(res_val, txn);
-		uint64_t const length = db_read_uint64(res_val);
-
-		responses[i].time = time;
-		responses[i].status = status;
-		strlcpy(responses[i].type, type, sizeof(responses[i].type));
-		responses[i].length = length;
-		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
-			size_t x = db_read_blob(res_val, responses[i].hashes[j], HASH_DIGEST_MAX);
-			responses[i].hlen[j] = x;
-		}
-	}
-
-	db_cursor_close(cursor); cursor = NULL;
-	db_txn_abort(txn); txn = NULL;
-	hx_db_close(&db);
-}
+	ssize_t count = get_responses(URL, responses, numberof(responses));
+	if(count < 0) return rc;
 
 	res_merge_list(responses, numberof(responses));
 
-
 	TemplateStaticArg args[] = {
+		{"url-link", NULL},
+		{"wayback-url", NULL},
+		{"google-url", NULL},
+		{"virustotal-url", NULL},
 		{NULL, NULL},
 	};
 	HTTPConnectionWriteResponse(conn, 200, "OK");
@@ -204,12 +216,14 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	HTTPConnectionBeginBody(conn);
 	TemplateWriteHTTPChunk(header, TemplateStaticVar, &args, conn);
 
-
-	for(size_t j = 0; j < i; j++) {
-		if(responses[j].prev) continue; // Skip duplicates
-		TemplateWriteHTTPChunk(entry, hist_var, &responses[j], conn);
+	for(size_t i = 0; i < count; i++) {
+		if(responses[i].prev) continue; // Skip duplicates
+		if(200 == responses[i].status) {
+			TemplateWriteHTTPChunk(entry, hist_var, &responses[i], conn);
+		} else {
+			TemplateWriteHTTPChunk(error, hist_var, &responses[i], conn);
+		}
 	}
-
 
 	TemplateWriteHTTPChunk(footer, TemplateStaticVar, &args, conn);
 	HTTPConnectionWriteChunkEnd(conn);
