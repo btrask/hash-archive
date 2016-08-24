@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <kvstore/db_schema.h>
 #include "util/hash.h"
+#include "common.h"
 
 // TODO
 typedef char const *strarg_t;

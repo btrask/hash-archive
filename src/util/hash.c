@@ -10,7 +10,6 @@
 #include <strings.h>
 #include "hash.h"
 
-// TODO: Get rid of this duplication...
 #define MIN(a, b) ({ \
 	__typeof__(a) const __a = (a); \
 	__typeof__(b) const __b = (b); \
