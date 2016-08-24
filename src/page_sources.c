@@ -44,19 +44,37 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	if(rc < 0) goto cleanup;
 
 	DB_range range[1];
-	DB_val key[1];
+	DB_val hash_key[1];
 	HXAlgoHashAndTimeIDRange2(range, obj->algo, obj->buf, obj->len);
-	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
-	for(; rc >= 0; rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
-
-
+	rc = db_cursor_firstr(cursor, range, hash_key, NULL, -1);
+	for(; rc >= 0; rc = db_cursor_nextr(cursor, range, hash_key, NULL, -1)) {
 		hash_algo algo;
 		unsigned char const *hash;
 		uint64_t time, id;
-		HXAlgoHashAndTimeIDKeyUnpack(key, &algo, &hash, &time, &id);
+		HXAlgoHashAndTimeIDKeyUnpack(hash_key, &algo, &hash, &time, &id);
+
+		DB_val res_key[1], res_val[1];
+		HXTimeIDToResponseKeyPack(res_key, time, id);
+		rc = db_get(txn, res_key, res_val);
+		if(rc < 0) goto cleanup;
+
+		strarg_t url, type;
+		int status;
+		uint64_t length;
+		size_t hlens[HASH_ALGO_MAX];
+		unsigned char const *hashes[HASH_ALGO_MAX];
+		HXTimeIDToResponseValUnpack(res_val, txn, &url, &status, &type, &length, hlens, hashes);
+
+		hash_uri_t obj2[1];
+		obj2->type = obj->type;
+		obj2->algo = obj->algo;
+		obj2->buf = (unsigned char *)hashes[obj->algo];
+		obj2->len = hlens[obj->algo];
+		char pretty[URI_MAX];
+		hash_uri_format(obj2, pretty, sizeof(pretty));
+		fprintf(stderr, "test %s = %s\n", URI, pretty);
 
 
-		fprintf(stderr, "test %llu, %llu\n", (unsigned long long)time, (unsigned long long)id);
 
 	}
 
