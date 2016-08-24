@@ -1,6 +1,7 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#include <string.h>
 #include "util/hash.h"
 #include "util/html.h"
 #include "page.h"
@@ -64,6 +65,12 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 		size_t hlens[HASH_ALGO_MAX];
 		unsigned char const *hashes[HASH_ALGO_MAX];
 		HXTimeIDToResponseValUnpack(res_val, txn, &url, &status, &type, &length, hlens, hashes);
+
+		// Our index is truncated so it can return spurrious matches.
+		// Ensure the complete prefix matches.
+		if(obj->len > hlens[obj->algo]) continue;
+		if(0 != memcmp(hashes[obj->algo], obj->buf, obj->len)) continue;
+
 
 		hash_uri_t obj2[1];
 		obj2->type = obj->type;
