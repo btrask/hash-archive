@@ -228,7 +228,7 @@ int hash_uri_parse_magnet(char const *const URI, hash_uri_t *const out) {
 	if(0 != rc) return HASH_EPARSE;
 	out->type = LINK_MAGNET;
 	out->algo = hash_algo_parse(URI+m[2].rm_so, match_len(&m[2]));
-	rc = b64_decode_copy(URI+m[3].rm_so, match_len(&m[3]), &out->buf, &out->len);
+	rc = hex_decode_copy(URI+m[3].rm_so, match_len(&m[3]), &out->buf, &out->len);
 	if(rc < 0) return rc;
 	return 0;
 }
