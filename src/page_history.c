@@ -112,6 +112,10 @@ static ssize_t get_responses(strarg_t const URL, struct response *const out, siz
 		strlcpy(out[i].type, type, sizeof(out[i].type));
 		out[i].length = length;
 		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
+			if(0 == res_val->size) {
+				out[i].hlen[j] = 0;
+				continue;
+			}
 			size_t const len = db_read_uint64(res_val);
 			unsigned char const *const hash = db_read_blob(res_val, len);
 			memcpy(out[i].hashes[j], hash, len);
