@@ -66,6 +66,9 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	HTTPConnectionBeginBody(conn);
 	TemplateWriteHTTPChunk(header, NULL, NULL, conn);
 
+	// TODO: If there are any response hashes that don't exactly match
+	// the user's query (i.e. they're longer), then show "search suggestions".
+
 	for(size_t i = 0; i < count; i++) {
 		TemplateWriteHTTPChunk(entry, source_var, &responses[i], conn);
 	}
