@@ -405,7 +405,7 @@ ssize_t b64_decode(char const *const str, size_t const len, unsigned char *const
 		if(i*3+2 >= max) return i*3+2;
 		if(i*4+3 >= len || b64_term(str[i*4+3])) return i*3+2;
 		hi = lo;
-		lo = b64_term(str[i*4+3]);
+		lo = b64_char(str[i*4+3]);
 		if(lo < 0) return lo;
 		out[i*3+2] = hi << 6 | lo >> 0;
 	}
