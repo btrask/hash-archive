@@ -60,11 +60,18 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 		goto cleanup;
 	}
 
+	char *hash_link = direct_link_html(obj->type, URI);
+
+	TemplateStaticArg args[] = {
+		{"hash-link", hash_link},
+		{NULL, NULL},
+	};
+
 	HTTPConnectionWriteResponse(conn, 200, "OK");
 	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
 	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
 	HTTPConnectionBeginBody(conn);
-	TemplateWriteHTTPChunk(header, NULL, NULL, conn);
+	TemplateWriteHTTPChunk(header, TemplateStaticVar, args, conn);
 
 	// TODO: If there are any response hashes that don't exactly match
 	// the user's query (i.e. they're longer), then show "search suggestions".
@@ -73,12 +80,13 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 		TemplateWriteHTTPChunk(entry, source_var, &responses[i], conn);
 	}
 
-	TemplateWriteHTTPChunk(footer, NULL, NULL, conn);
+	TemplateWriteHTTPChunk(footer, TemplateStaticVar, args, conn);
 	HTTPConnectionWriteChunkEnd(conn);
 	HTTPConnectionEnd(conn);
 
 cleanup:
 	FREE(&responses);
+	FREE(&hash_link);
 	return 0;
 }
 
