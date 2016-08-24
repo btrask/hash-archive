@@ -2,18 +2,35 @@
 // MIT licensed (see LICENSE for details)
 
 #include <assert.h>
+#include <string.h>
 #include <kvstore/db_schema.h>
 #include "util/hash.h"
 #include "common.h"
 
 // TODO
+#define URI_MAX (1023+1)
 typedef char const *strarg_t;
+
+struct response {
+	uint64_t time;
+	char url[URI_MAX];
+	int status;
+	char type[255+1];
+	uint64_t length;
+	size_t hlen[HASH_ALGO_MAX];
+	unsigned char hashes[HASH_ALGO_MAX][HASH_DIGEST_MAX];
+	struct response *next;
+	struct response *prev;
+};
 
 int hx_db_load(void);
 int hx_db_open(DB_env **const out);
 void hx_db_close(DB_env **const in);
 
 char const *hx_strerror(int const rc);
+
+ssize_t hx_get_history(strarg_t const URL, struct response *const out, size_t const max);
+ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, size_t const max);
 
 enum {
 	// 0-19 reserved.
@@ -40,19 +57,24 @@ enum {
 	db_bind_uint64((range)->min, HXTimeIDToResponse); \
 	db_range_genmax((range)); \
 	DB_RANGE_STORAGE_VERIFY(range);
-static void HXTimeIDToResponseValUnpack(DB_val *const val, DB_txn *const txn, strarg_t *const url, int *const status, strarg_t *const type, uint64_t *const length, size_t *const hlens, unsigned char const **const hashes) {
-	*url = db_read_string(val, txn);
-	*status = db_read_uint64(val) - 0xffff;
-	*type = db_read_string(val, txn);
-	*length = db_read_uint64(val);
+static void HXTimeIDToResponseValUnpack(DB_val *const val, DB_txn *const txn, struct response *const out) {
+	assert(out);
+	strarg_t const url = db_read_string(val, txn);
+	int const status = db_read_uint64(val) - 0xffff;
+	strarg_t const type = db_read_string(val, txn);
+	uint64_t const length = db_read_uint64(val);
+	strlcpy(out->url, url, sizeof(out->url));
+	out->status = status;
+	strlcpy(out->type, type, sizeof(out->type));
+	out->length = length;
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		if(0 == val->size) {
-			hlens[i] = 0;
-			hashes[i] = NULL;
-		} else {
-			hlens[i] = db_read_uint64(val);
-			hashes[i] = db_read_blob(val, hlens[i]);
+			out->hlen[i] = 0;
+			continue;
 		}
+		out->hlen[i] = db_read_uint64(val);
+		db_assert(out->hlen[i] <= sizeof(out->hashes[i]));
+		memcpy(out->hashes[i], db_read_blob(val, out->hlen[i]), out->hlen[i]);
 	}
 }
 

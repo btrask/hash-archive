@@ -35,16 +35,6 @@ bool const deprecated[HASH_ALGO_MAX] = {
 };
 
 
-struct response {
-	uint64_t time;
-	int status;
-	char type[255+1];
-	uint64_t length;
-	size_t hlen[HASH_ALGO_MAX];
-	unsigned char hashes[HASH_ALGO_MAX][HASH_DIGEST_MAX];
-	struct response *next;
-	struct response *prev;
-};
 
 static bool res_eq(struct response const *const a, struct response const *const b) {
 	if(a == b) return true;
@@ -73,66 +63,6 @@ static void res_merge_list(struct response *const responses, size_t const len) {
 		responses[i-1].next = &responses[i];
 		responses[i].prev = &responses[i-1];
 	}
-}
-static ssize_t get_responses(strarg_t const URL, struct response *const out, size_t const max) {
-	assert(out);
-	assert(max > 0);
-
-	char surt[URI_MAX];
-	int rc = url_normalize_surt(URL, surt, sizeof(surt));
-	if(rc < 0) return rc;
-
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
-	DB_cursor *cursor = NULL;
-	size_t i = 0;
-
-	rc = hx_db_open(&db);
-	if(rc < 0) goto cleanup;
-	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
-	if(rc < 0) goto cleanup;
-	rc = db_cursor_open(txn, &cursor);
-	if(rc < 0) goto cleanup;
-
-	DB_range range[1];
-	DB_val key[1];
-	HXURLSurtAndTimeIDRange1(range, txn, surt);
-	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
-	if(rc < 0 && DB_NOTFOUND != rc) goto cleanup;
-	for(; rc >= 0 && i < max; i++, rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
-		strarg_t surt;
-		uint64_t time, id;
-		HXURLSurtAndTimeIDKeyUnpack(key, txn, &surt, &time, &id);
-
-		DB_val res_key[1], res_val[1];
-		HXTimeIDToResponseKeyPack(res_key, time, id);
-		rc = db_get(txn, res_key, res_val);
-		if(rc < 0) goto cleanup;
-
-		strarg_t url, type;
-		int status;
-		uint64_t length;
-		size_t hlens[HASH_ALGO_MAX];
-		unsigned char const *hashes[HASH_ALGO_MAX];
-		HXTimeIDToResponseValUnpack(res_val, txn, &url, &status, &type, &length, hlens, hashes);
-
-		out[i].time = time;
-		out[i].status = status;
-		strlcpy(out[i].type, type, sizeof(out[i].type));
-		out[i].length = length;
-		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
-			out[i].hlen[j] = hlens[j];
-			memcpy(out[i].hashes[j], hashes[j], hlens[j]);
-		}
-	}
-	rc = 0;
-
-cleanup:
-	db_cursor_close(cursor); cursor = NULL;
-	db_txn_abort(txn); txn = NULL;
-	hx_db_close(&db);
-	if(rc < 0) return rc;
-	return i;
 }
 
 
@@ -215,7 +145,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	char *google_url = aasprintf("https://webcache.googleusercontent.com/search?q=cache:%s", escaped);
 	char *virustotal_url = aasprintf("https://www.virustotal.com/en/url/%s", escaped);
 
-	ssize_t count = get_responses(URL, responses, RESPONSES_MAX);
+	ssize_t count = hx_get_history(URL, responses, RESPONSES_MAX);
 	if(count < 0) {
 		HTTPConnectionSendStatus(conn, HTTPError(count));
 		goto cleanup;

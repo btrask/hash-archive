@@ -8,6 +8,8 @@
 #include "db.h"
 #include "common.h"
 
+#define RESPONSES_MAX 30
+
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
 static TemplateRef entry = NULL;
@@ -30,75 +32,18 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	rc = hash_uri_parse(URI, obj);
 	if(rc < 0) return rc;
 
+	struct response *responses = calloc(RESPONSES_MAX, sizeof(struct response));
+	assert(responses);
 
-{
-
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
-	DB_cursor *cursor = NULL;
-
-	rc = hx_db_open(&db);
-	if(rc < 0) goto cleanup;
-	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
-	if(rc < 0) goto cleanup;
-	rc = db_cursor_open(txn, &cursor);
-	if(rc < 0) goto cleanup;
-
-	DB_range range[1];
-	DB_val hash_key[1];
-	HXAlgoHashAndTimeIDRange2(range, obj->algo, obj->buf, obj->len);
-	rc = db_cursor_firstr(cursor, range, hash_key, NULL, -1);
-	for(; rc >= 0; rc = db_cursor_nextr(cursor, range, hash_key, NULL, -1)) {
-		hash_algo algo;
-		unsigned char const *hash;
-		uint64_t time, id;
-		HXAlgoHashAndTimeIDKeyUnpack(hash_key, &algo, &hash, &time, &id);
-
-		DB_val res_key[1], res_val[1];
-		HXTimeIDToResponseKeyPack(res_key, time, id);
-		rc = db_get(txn, res_key, res_val);
-		if(rc < 0) goto cleanup;
-
-		strarg_t url, type;
-		int status;
-		uint64_t length;
-		size_t hlens[HASH_ALGO_MAX];
-		unsigned char const *hashes[HASH_ALGO_MAX];
-		HXTimeIDToResponseValUnpack(res_val, txn, &url, &status, &type, &length, hlens, hashes);
-
-		// Our index is truncated so it can return spurrious matches.
-		// Ensure the complete prefix matches.
-		if(obj->len > hlens[obj->algo]) continue;
-		if(0 != memcmp(hashes[obj->algo], obj->buf, obj->len)) continue;
-
-
-		hash_uri_t obj2[1];
-		obj2->type = obj->type;
-		obj2->algo = obj->algo;
-		obj2->buf = (unsigned char *)hashes[obj->algo];
-		obj2->len = hlens[obj->algo];
-		char pretty[URI_MAX];
-		hash_uri_format(obj2, pretty, sizeof(pretty));
-		fprintf(stderr, "test %s = %s\n", URI, pretty);
-
-
-
+	ssize_t count = hx_get_sources(obj, responses, RESPONSES_MAX);
+	if(count < 0) {
+		HTTPConnectionSendStatus(conn, HTTPError(count));
+		goto cleanup;
 	}
 
-
-
-cleanup:
-	db_cursor_close(cursor); cursor = NULL;
-	db_txn_abort(txn); txn = NULL;
-	hx_db_close(&db);
-
-
-
-
-
-}
-
-
+	for(size_t i = 0; i < count; i++) {
+		fprintf(stderr, "source %s\n", responses[i].url);
+	}
 
 
 	HTTPConnectionWriteResponse(conn, 200, "OK");
@@ -112,6 +57,8 @@ cleanup:
 	HTTPConnectionWriteChunkEnd(conn);
 	HTTPConnectionEnd(conn);
 
+cleanup:
+	FREE(&responses);
 	return 0;
 }
 
