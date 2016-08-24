@@ -102,24 +102,21 @@ static ssize_t get_responses(strarg_t const URL, struct response *const out, siz
 		HXTimeIDToResponseKeyPack(res_key, time, id);
 		rc = db_get(txn, res_key, res_val);
 		if(rc < 0) goto cleanup;
-		strarg_t const url = db_read_string(res_val, txn);
-		int const status = db_read_uint64(res_val) - 0xffff;
-		strarg_t const type = db_read_string(res_val, txn);
-		uint64_t const length = db_read_uint64(res_val);
+
+		strarg_t url, type;
+		int status;
+		uint64_t length;
+		size_t hlens[HASH_ALGO_MAX];
+		unsigned char const *hashes[HASH_ALGO_MAX];
+		HXTimeIDToResponseValUnpack(res_val, txn, &url, &status, &type, &length, hlens, hashes);
 
 		out[i].time = time;
 		out[i].status = status;
 		strlcpy(out[i].type, type, sizeof(out[i].type));
 		out[i].length = length;
 		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
-			if(0 == res_val->size) {
-				out[i].hlen[j] = 0;
-				continue;
-			}
-			size_t const len = db_read_uint64(res_val);
-			unsigned char const *const hash = db_read_blob(res_val, len);
-			memcpy(out[i].hashes[j], hash, len);
-			out[i].hlen[j] = len;
+			out[i].hlen[j] = hlens[j];
+			memcpy(out[i].hashes[j], hashes[j], hlens[j]);
 		}
 	}
 	rc = 0;

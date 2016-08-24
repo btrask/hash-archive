@@ -40,6 +40,21 @@ enum {
 	db_bind_uint64((range)->min, HXTimeIDToResponse); \
 	db_range_genmax((range)); \
 	DB_RANGE_STORAGE_VERIFY(range);
+static void HXTimeIDToResponseValUnpack(DB_val *const val, DB_txn *const txn, strarg_t *const url, int *const status, strarg_t *const type, uint64_t *const length, size_t *const hlens, unsigned char const **const hashes) {
+	*url = db_read_string(val, txn);
+	*status = db_read_uint64(val) - 0xffff;
+	*type = db_read_string(val, txn);
+	*length = db_read_uint64(val);
+	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
+		if(0 == val->size) {
+			hlens[i] = 0;
+			hashes[i] = NULL;
+		} else {
+			hlens[i] = db_read_uint64(val);
+			hashes[i] = db_read_blob(val, hlens[i]);
+		}
+	}
+}
 
 #define HXURLSurtAndTimeIDKeyPack(val, txn, url, time, id) \
 	DB_VAL_STORAGE(val, DB_VARINT_MAX*3 + DB_INLINE_MAX); \
