@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <kvstore/db_schema.h>
+#include "util/hash.h"
 
 // TODO
 typedef char const *strarg_t;
@@ -95,5 +96,13 @@ static void HXTimeIDQueuedURLAndClientKeyUnpack(DB_val *const val, DB_txn *const
 	db_bind_blob((range)->min, (hash), MIN(HX_HASH_INDEX_LEN, (len))); \
 	db_range_genmax((range)); \
 	DB_RANGE_STORAGE_VERIFY(range);
-
+static void HXAlgoHashAndTimeIDKeyUnpack(DB_val *const val, hash_algo *const algo, unsigned char const **const hash, uint64_t *const time, uint64_t *const id) {
+	uint64_t const table = db_read_uint64(val);
+	assert(table >= HXHashAndTimeID);
+	assert(table < HXHashAndTimeID+HASH_ALGO_MAX);
+	*algo = table - HXHashAndTimeID;
+	*hash = db_read_blob(val, HX_HASH_INDEX_LEN);
+	*time = db_read_uint64(val);
+	*id = db_read_uint64(val);
+}
 

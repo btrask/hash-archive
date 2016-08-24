@@ -8,23 +8,7 @@
 #include "util/url.h"
 #include "page.h"
 #include "db.h"
-
-// TODO: Get rid of this duplication...
-#define MIN(a, b) ({ \
-	__typeof__(a) const __a = (a); \
-	__typeof__(b) const __b = (b); \
-	__a < __b ? __a : __b; \
-})
-#define MAX(a, b) ({ \
-	__typeof__(a) const __a = (a); \
-	__typeof__(b) const __b = (b); \
-	__a > __b ? __a : __b; \
-})
-#define STR_LEN(x) (x), (sizeof(x)-1)
-#define FREE(ptrptr) do { \
-	__typeof__(ptrptr) const __x = (ptrptr); \
-	free(*__x); *__x = NULL; \
-} while(0)
+#include "common.h"
 
 // TODO
 int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);
@@ -128,8 +112,10 @@ static ssize_t get_responses(strarg_t const URL, struct response *const out, siz
 		strlcpy(out[i].type, type, sizeof(out[i].type));
 		out[i].length = length;
 		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
-			out[i].hlen[j] = db_read_uint64(res_val);
-			db_read_blob(res_val, out[i].hashes[j], out[i].hlen[j]);
+			size_t const len = db_read_uint64(res_val);
+			unsigned char const *const hash = db_read_blob(res_val, len);
+			memcpy(out[i].hashes[j], hash, len);
+			out[i].hlen[j] = len;
 		}
 	}
 	rc = 0;

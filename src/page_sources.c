@@ -5,6 +5,7 @@
 #include "util/html.h"
 #include "page.h"
 #include "db.h"
+#include "common.h"
 
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
@@ -24,6 +25,11 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	}
 	int rc = 0;
 
+	hash_uri_t obj[1];
+	rc = hash_uri_parse(URI, obj);
+	if(rc < 0) return rc;
+
+
 {
 
 	DB_env *db = NULL;
@@ -37,6 +43,22 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	rc = db_cursor_open(txn, &cursor);
 	if(rc < 0) goto cleanup;
 
+	DB_range range[1];
+	DB_val key[1];
+	HXAlgoHashAndTimeIDRange2(range, obj->algo, obj->buf, obj->len);
+	rc = db_cursor_firstr(cursor, range, key, NULL, -1);
+	for(; rc >= 0; rc = db_cursor_nextr(cursor, range, key, NULL, -1)) {
+
+
+		hash_algo algo;
+		unsigned char const *hash;
+		uint64_t time, id;
+		HXAlgoHashAndTimeIDKeyUnpack(key, &algo, &hash, &time, &id);
+
+
+		fprintf(stderr, "test %llu, %llu\n", (unsigned long long)time, (unsigned long long)id);
+
+	}
 
 
 
