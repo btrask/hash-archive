@@ -128,8 +128,8 @@ static ssize_t get_responses(strarg_t const URL, struct response *const out, siz
 		strlcpy(out[i].type, type, sizeof(out[i].type));
 		out[i].length = length;
 		for(size_t j = 0; j < HASH_ALGO_MAX; j++) {
-			size_t x = db_read_blob(res_val, out[i].hashes[j], HASH_DIGEST_MAX);
-			out[i].hlen[j] = x;
+			out[i].hlen[j] = db_read_uint64(res_val);
+			db_read_blob(res_val, out[i].hashes[j], out[i].hlen[j]);
 		}
 	}
 	rc = 0;

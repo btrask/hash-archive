@@ -108,7 +108,9 @@ int response_add(DB_txn *const txn, uint64_t const time, uint64_t const id, stra
 	db_bind_string(res_val, type, txn);
 	db_bind_uint64(res_val, length);
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
-		db_bind_blob(res_val, hasher_get(hasher, i), hash_algo_digest_len(i));
+		size_t const len = hash_algo_digest_len(i);
+		db_bind_uint64(res_val, len);
+		db_bind_blob(res_val, hasher_get(hasher, i), len);
 	}
 	DB_VAL_STORAGE_VERIFY(res_val);
 	rc = db_put(txn, res_key, res_val, DB_NOOVERWRITE_FAST);
