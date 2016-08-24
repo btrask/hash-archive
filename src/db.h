@@ -89,10 +89,10 @@ static void HXTimeIDQueuedURLAndClientKeyUnpack(DB_val *const val, DB_txn *const
 	db_bind_uint64((val), (time)); \
 	db_bind_uint64((val), (id)); \
 	DB_VAL_STORAGE_VERIFY(val);
-#define HXAlgoHashAndTimeIDRange2(range, algo, hash) \
+#define HXAlgoHashAndTimeIDRange2(range, algo, hash, len) \
 	DB_RANGE_STORAGE(range); \
 	db_bind_uint64((range)->min, HXHashAndTimeID+(algo)); \
-	db_bind_blob((range)->min, (hash), HX_HASH_INDEX_LEN); \
+	db_bind_blob((range)->min, (hash), MIN(HX_HASH_INDEX_LEN, (len))); \
 	db_range_genmax((range)); \
 	DB_RANGE_STORAGE_VERIFY(range);
 
