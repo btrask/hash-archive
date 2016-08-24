@@ -13,6 +13,9 @@
 // TODO
 int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);
 
+#define RESPONSES_MAX 30
+#define CRAWL_DELAY_SECONDS (60*60*24)
+
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
 static TemplateRef entry = NULL;
@@ -72,6 +75,9 @@ static void res_merge_list(struct response *const responses, size_t const len) {
 	}
 }
 static ssize_t get_responses(strarg_t const URL, struct response *const out, size_t const max) {
+	assert(out);
+	assert(max > 0);
+
 	char surt[URI_MAX];
 	int rc = url_normalize_surt(URL, surt, sizeof(surt));
 	if(rc < 0) return rc;
@@ -200,17 +206,22 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	}
 	int rc = 0;
 
-	struct response responses[30] = {};
-	ssize_t count = get_responses(URL, responses, numberof(responses));
-	if(count < 0) return rc;
-
-	res_merge_list(responses, numberof(responses));
+	struct response *responses = calloc(RESPONSES_MAX, sizeof(struct response));
+	assert(responses); // TODO
 
 	char *escaped = html_encode(URL);
 	char *link = direct_link_html(LINK_WEB_URL, URL);
 	char *wayback_url = aasprintf("https://web.archive.org/web/*/%s", escaped);
 	char *google_url = aasprintf("https://webcache.googleusercontent.com/search?q=cache:%s", escaped);
 	char *virustotal_url = aasprintf("https://www.virustotal.com/en/url/%s", escaped);
+
+	ssize_t count = get_responses(URL, responses, RESPONSES_MAX);
+	if(count < 0) {
+		HTTPConnectionSendStatus(conn, HTTPError(count));
+		goto cleanup;
+	}
+
+	res_merge_list(responses, numberof(responses));
 
 	TemplateStaticArg args[] = {
 		{"url-link", link},
@@ -226,7 +237,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	TemplateWriteHTTPChunk(header, TemplateStaticVar, &args, conn);
 
 	uint64_t const now = time(NULL);
-	if(count <= 0 || responses[0].time < now - 60*60*24) {
+	if(count <= 0 || responses[0].time < now - CRAWL_DELAY_SECONDS) {
 		TemplateWriteHTTPChunk(outdated, TemplateStaticVar, &args, conn);
 		rc = queue_add(now, URL, ""); // TODO: Get client
 		if(rc < 0) {
@@ -247,12 +258,13 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	HTTPConnectionWriteChunkEnd(conn);
 	HTTPConnectionEnd(conn);
 
+cleanup:
+	FREE(&responses);
 	FREE(&escaped);
 	FREE(&link);
 	FREE(&wayback_url);
 	FREE(&google_url);
 	FREE(&virustotal_url);
-
 	return 0;
 }
 
