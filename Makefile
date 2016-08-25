@@ -70,6 +70,7 @@ OBJECTS := \
 	$(BUILD_DIR)/src/page_sources.o \
 	$(BUILD_DIR)/src/fetch.o \
 	$(BUILD_DIR)/src/queue.o \
+	$(BUILD_DIR)/src/import.o \
 	$(BUILD_DIR)/src/db.o
 
 

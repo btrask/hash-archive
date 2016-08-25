@@ -30,6 +30,9 @@ void queue_init(void);
 int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);
 void queue_work_loop(void *ignored);
 
+// TODO
+int import_init(void);
+
 
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
@@ -184,6 +187,9 @@ static void init(void *ignore) {
 	for(size_t i = 0; i < QUEUE_WORKERS; i++) {
 		async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
 	}
+
+	rc = import_init();
+	if(rc < 0) goto cleanup;
 
 	rc = HTTPServerCreate(listener, NULL, &server);
 	if(rc < 0) goto cleanup;
