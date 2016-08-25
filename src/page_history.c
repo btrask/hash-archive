@@ -151,7 +151,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		goto cleanup;
 	}
 
-	res_merge_list(responses, numberof(responses));
+	res_merge_list(responses, RESPONSES_MAX);
 
 	TemplateStaticArg args[] = {
 		{"url-link", link},
