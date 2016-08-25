@@ -17,6 +17,18 @@ static TemplateRef notfound = NULL;
 static TemplateRef short_hash = NULL;
 static TemplateRef weak_hash = NULL;
 
+static void res_merge_common_urls(struct response *const responses, size_t const len) {
+	for(size_t i = 1; i < len; i++) {
+		for(size_t j = i; j-- > 0;) {
+			if(responses[j].next) continue;
+			if(0 != strcmp(responses[j].url, responses[i].url)) continue;
+			responses[j].next = &responses[i];
+			responses[i].prev = &responses[j];
+			break;
+		}
+	}
+}
+
 static int source_var(void *const actx, char const *const var, TemplateWriteFn const wr, void *const wctx) {
 	struct response const *const res = actx;
 
@@ -60,6 +72,8 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 		goto cleanup;
 	}
 
+	res_merge_common_urls(responses, count);
+
 	char *hash_link = direct_link_html(obj->type, URI);
 
 	TemplateStaticArg args[] = {
@@ -77,6 +91,7 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	// the user's query (i.e. they're longer), then show "search suggestions".
 
 	for(size_t i = 0; i < count; i++) {
+		if(responses[i].prev) continue; // Skip duplicates
 		TemplateWriteHTTPChunk(entry, source_var, &responses[i], conn);
 	}
 

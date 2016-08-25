@@ -56,7 +56,7 @@ static bool res_eq(struct response const *const a, struct response const *const 
 	}
 	return true;
 }
-static void res_merge_list(struct response *const responses, size_t const len) {
+static void res_merge_common_hashes(struct response *const responses, size_t const len) {
 	for(size_t i = 1; i < len; i++) {
 		bool const eq = res_eq(&responses[i-1], &responses[i]);
 		if(!eq) continue;
@@ -151,7 +151,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		goto cleanup;
 	}
 
-	res_merge_list(responses, RESPONSES_MAX);
+	res_merge_common_hashes(responses, count);
 
 	TemplateStaticArg args[] = {
 		{"url-link", link},
