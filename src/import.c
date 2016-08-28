@@ -83,6 +83,9 @@ static void connection(void *arg) {
 	uv_stream_t *const server = arg;
 	uv_pipe_t pipe[1];
 	uv_stream_t *const stream = (uv_stream_t *)pipe;
+	DB_env *db = NULL;
+	DB_txn *txn = NULL;
+	uint64_t id = 0;
 
 	int rc = uv_pipe_init(async_loop, pipe, false);
 	if(rc < 0) goto cleanup;
@@ -124,23 +127,25 @@ static void connection(void *arg) {
 			res->digests[i].len = 0;
 		}
 
-		// TODO: Store response.
-		fprintf(stderr, "%llu - %s\n", (unsigned long long)res->time, res->url);
-		char x[URI_MAX];
-		hash_uri_t zz = {
-			.type = LINK_HASH_URI,
-			.algo = HASH_ALGO_SHA256,
-			.buf = res->digests[HASH_ALGO_SHA256].buf,
-			.len = res->digests[HASH_ALGO_SHA256].len,
-		};
-		hash_uri_format(&zz, x, sizeof(x));
-		fprintf(stderr, "test %s\n", x);
+		rc = hx_db_open(&db);
+		if(rc < 0) goto cleanup;
+		rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
+		if(rc < 0) goto cleanup;
+		rc = hx_response_add(txn, res, id++);
+		if(rc < 0) goto cleanup;
+		rc = db_txn_commit(txn); txn = NULL;
+		if(rc < 0) goto cleanup;
+		hx_db_close(&db);
+
+		fprintf(stderr, "Imported %s\n", res->url);
 
 	}
 
 cleanup:
 	async_close((uv_handle_t *)pipe);
-	fprintf(stderr, "closed %s\n", uv_strerror(rc));
+	db_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+	fprintf(stderr, "Import ended: %s\n", hx_strerror(rc));
 }
 static void connection_cb(uv_stream_t *const server, int const status) {
 	async_spawn(STACK_DEFAULT, connection, server);

@@ -28,6 +28,8 @@ void hx_db_close(DB_env **const in);
 
 char const *hx_strerror(int const rc);
 
+int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_t const id);
+
 ssize_t hx_get_history(strarg_t const URL, struct response *const out, size_t const max);
 ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, size_t const max);
 

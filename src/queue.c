@@ -86,56 +86,6 @@ static int queue_remove(DB_txn *const txn, uint64_t const time, uint64_t const i
 }
 
 
-int response_add(DB_txn *const txn, struct response const *const res, uint64_t const id) {
-	assert(txn);
-	assert(res);
-	char URL_surt[URI_MAX];
-	int rc = url_normalize_surt(res->url, URL_surt, sizeof(URL_surt));
-	if(rc < 0) return rc;
-
-	// TODO: Signed varints would be more efficient.
-	int64_t sstatus = 0xffff + res->status;
-	db_assert(sstatus >= 0);
-
-	DB_val res_key[1], res_val[1];
-	HXTimeIDToResponseKeyPack(res_key, res->time, id);
-	DB_VAL_STORAGE(res_val,
-		DB_INLINE_MAX +
-		DB_VARINT_MAX +
-		DB_INLINE_MAX +
-		DB_VARINT_MAX *
-		DB_BLOB_MAX(HASH_DIGEST_MAX)*HASH_ALGO_MAX)
-	db_bind_string(res_val, res->url, txn);
-	db_bind_uint64(res_val, (uint64_t)sstatus);
-	db_bind_string(res_val, res->type, txn);
-	db_bind_uint64(res_val, res->length);
-	for(size_t i = 0; i < numberof(res->digests); i++) {
-		size_t const len = hash_algo_digest_len(i);
-		db_bind_uint64(res_val, res->digests[i].len);
-		db_bind_blob(res_val, res->digests[i].buf, res->digests[i].len);
-	}
-	DB_VAL_STORAGE_VERIFY(res_val);
-	rc = db_put(txn, res_key, res_val, DB_NOOVERWRITE_FAST);
-	if(rc < 0) return rc;
-
-	DB_val url_key[1];
-	HXURLSurtAndTimeIDKeyPack(url_key, txn, URL_surt, res->time, id);
-	rc = db_put(txn, url_key, NULL, DB_NOOVERWRITE_FAST);
-	if(rc < 0) return rc;
-
-	DB_val hash_key[1];
-	for(size_t i = 0; i < numberof(res->digests); i++) {
-		if(!res->digests[i].len) continue;
-		assert(res->digests[i].len >= HX_HASH_INDEX_LEN);
-		HXAlgoHashAndTimeIDKeyPack(hash_key, i, res->digests[i].buf, res->time, id);
-		rc = db_put(txn, hash_key, NULL, DB_NOOVERWRITE_FAST);
-		if(rc < 0) return rc;
-	}
-
-alogf("Added response %s %d %s %llu (%s)\n", res->url, res->status, res->type, (unsigned long long)res->length, URL_surt);
-
-	return 0;
-}
 
 int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	assert(time);
@@ -208,7 +158,7 @@ static void queue_work(void) {
 	if(rc < 0) goto cleanup;
 	rc = queue_remove(txn, then, old_id, URL, client);
 	if(rc < 0) goto cleanup;
-	rc = response_add(txn, res, new_id);
+	rc = hx_response_add(txn, res, new_id);
 	if(rc < 0) goto cleanup;
 	rc = db_txn_commit(txn); txn = NULL;
 	if(rc < 0) goto cleanup;

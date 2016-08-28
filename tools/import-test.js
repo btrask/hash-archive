@@ -33,7 +33,7 @@ write_uint64(socket, 0);
 write_uint16(socket, 7);
 write_blob(socket, new Buffer(0));
 write_blob(socket, new Buffer(0));
-write_blob(socket, new Buffer([0xff, 0xff, 0xff, 0xff]));
+write_blob(socket, new Buffer([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]));
 write_blob(socket, new Buffer(0));
 write_blob(socket, new Buffer(0));
 write_blob(socket, new Buffer(0));
