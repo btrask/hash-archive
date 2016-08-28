@@ -6,3 +6,4 @@ deps/uv/uv.xcodeproj
 *~
 .DS_Store
 import.sock
+node_modules

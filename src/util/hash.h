@@ -15,7 +15,7 @@
 // Max value is 63 to fit uint64_t bitmask.
 //	XX( n, name,    len, str)
 #define HASH_ALGOS(XX) \
-/*	XX( 0, MD5,     16, "md5")*/ \
+	XX( 0, MD5,     16, "md5") \
 	XX( 1, SHA1,    20, "sha1") \
 	XX( 2, SHA256,  32, "sha256") \
 	XX( 3, SHA384,  48, "sha384") \

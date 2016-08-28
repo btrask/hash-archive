@@ -27,11 +27,11 @@ size_t const algos[] = {
 	HASH_ALGO_SHA384,
 	HASH_ALGO_SHA512,
 	HASH_ALGO_SHA1,
-//	HASH_ALGO_MD5,
+	HASH_ALGO_MD5,
 };
 bool const deprecated[HASH_ALGO_MAX] = {
 	[HASH_ALGO_SHA1] = true,
-//	[HASH_ALGO_MD5] = true,
+	[HASH_ALGO_MD5] = true,
 };
 
 
@@ -50,10 +50,16 @@ static bool res_eq(struct response const *const a, struct response const *const 
 	if(a->length != b->length) return false;
 
 	// We only compare the prefix. For empty hashes this is zero which is good.
+	size_t match = 0;
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		size_t const len = MIN(a->digests[i].len, b->digests[i].len);
 		if(0 != memcmp(a->digests[i].buf, b->digests[i].buf, len)) return false;
+		if(len >= 12) match++;
 	}
+
+	// We require at least one hash of at least 12 bytes having compared equal.
+	if(0 == match) return false;
+
 	return true;
 }
 static void res_merge_common_hashes(struct response *const responses, size_t const len) {

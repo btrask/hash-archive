@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <openssl/sha.h>
+#include <openssl/md5.h>
 #include "hash.h"
 
 typedef SHA_CTX SHA1_CTX;

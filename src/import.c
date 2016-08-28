@@ -114,6 +114,7 @@ static ssize_t read_responses(uv_stream_t *const stream, struct response *const 
 		for(size_t i = hcount; i < HASH_ALGO_MAX; i++) {
 			out[x].digests[i].len = 0;
 		}
+		fprintf(stderr, "Import request: %s\n", out[x].url);
 	}
 cleanup:
 	return x;
