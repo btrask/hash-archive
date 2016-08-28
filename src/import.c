@@ -109,10 +109,10 @@ static void connection(void *arg) {
 		rc = read_uint16(stream, &hcount);
 		if(rc < 0) goto cleanup;
 		for(size_t i = 0; i < MIN(hcount, HASH_ALGO_MAX); i++) {
-			ssize_t len = read_blob(stream, res->hashes[i], HASH_DIGEST_MAX);
+			ssize_t len = read_blob(stream, res->digests[i].buf, HASH_DIGEST_MAX);
 			if(len < 0) rc = len;
 			if(rc < 0) goto cleanup;
-			res->hlen[i] = len;
+			res->digests[i].len = len;
 		}
 		for(size_t i = HASH_ALGO_MAX; i < hcount; i++) {
 			unsigned char discard[HASH_DIGEST_MAX];
@@ -121,7 +121,7 @@ static void connection(void *arg) {
 			if(rc < 0) goto cleanup;
 		}
 		for(size_t i = hcount; i < HASH_ALGO_MAX; i++) {
-			res->hlen[i] = 0;
+			res->digests[i].len = 0;
 		}
 
 		// TODO: Store response.
@@ -130,8 +130,8 @@ static void connection(void *arg) {
 		hash_uri_t zz = {
 			.type = LINK_HASH_URI,
 			.algo = HASH_ALGO_SHA256,
-			.buf = res->hashes[HASH_ALGO_SHA256],
-			.len = res->hlen[HASH_ALGO_SHA256],
+			.buf = res->digests[HASH_ALGO_SHA256].buf,
+			.len = res->digests[HASH_ALGO_SHA256].len,
 		};
 		hash_uri_format(&zz, x, sizeof(x));
 		fprintf(stderr, "test %s\n", x);

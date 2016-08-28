@@ -17,8 +17,7 @@ struct response {
 	int status;
 	char type[255+1];
 	uint64_t length;
-	size_t hlen[HASH_ALGO_MAX];
-	unsigned char hashes[HASH_ALGO_MAX][HASH_DIGEST_MAX];
+	hash_digest_t digests[HASH_ALGO_MAX];
 	struct response *next;
 	struct response *prev;
 };
@@ -69,12 +68,14 @@ static void HXTimeIDToResponseValUnpack(DB_val *const val, DB_txn *const txn, st
 	out->length = length;
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		if(0 == val->size) {
-			out->hlen[i] = 0;
+			out->digests[i].len = 0;
 			continue;
 		}
-		out->hlen[i] = db_read_uint64(val);
-		db_assert(out->hlen[i] <= sizeof(out->hashes[i]));
-		memcpy(out->hashes[i], db_read_blob(val, out->hlen[i]), out->hlen[i]);
+		uint64_t const len = db_read_uint64(val);
+		unsigned char const *const buf = db_read_blob(val, len);
+		db_assert(len <= HASH_DIGEST_MAX);
+		out->digests[i].len = len;
+		memcpy(out->digests[i].buf, buf, len);
 	}
 }
 

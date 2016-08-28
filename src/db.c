@@ -128,8 +128,8 @@ ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, 
 
 		// Our index is truncated so it can return spurrious matches.
 		// Ensure the complete prefix matches.
-		if(obj->len > out[i].hlen[obj->algo]) continue;
-		if(0 != memcmp(out[i].hashes[obj->algo], obj->buf, obj->len)) continue;
+		if(obj->len > out[i].digests[obj->algo].len) continue;
+		if(0 != memcmp(out[i].digests[obj->algo].buf, obj->buf, obj->len)) continue;
 
 		i++;
 	}

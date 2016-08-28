@@ -51,8 +51,8 @@ static bool res_eq(struct response const *const a, struct response const *const 
 
 	// We only compare the prefix. For empty hashes this is zero which is good.
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
-		size_t const len = MIN(a->hlen[i], b->hlen[i]);
-		if(0 != memcmp(a->hashes[i], b->hashes[i], len)) return false;
+		size_t const len = MIN(a->digests[i].len, b->digests[i].len);
+		if(0 != memcmp(a->digests[i].buf, b->digests[i].buf, len)) return false;
 	}
 	return true;
 }
@@ -113,8 +113,8 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 		hash_uri_t const obj[1] = {{
 			.type = type,
 			.algo = algo,
-			.buf = (unsigned char *)res->hashes[algo],
-			.len = res->hlen[algo],
+			.buf = (unsigned char *)res->digests[algo].buf,
+			.len = res->digests[algo].len,
 		}};
 		if(obj->len <= 0) continue;
 		char *x = item_html_obj(obj);

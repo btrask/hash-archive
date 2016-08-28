@@ -85,12 +85,15 @@ ssize_t b64_decode(char const *const str, size_t const len, unsigned char *const
 enum {
 	HASHER_ALGOS_ALL = UINT64_MAX,
 };
+typedef struct {
+	size_t len;
+	unsigned char buf[HASH_DIGEST_MAX];
+} hash_digest_t;
 typedef struct hasher_s hasher_t;
 int hasher_create(uint64_t const algos, hasher_t **const out);
 void hasher_free();
 int hasher_update(hasher_t *const hasher, unsigned char const *const buf, size_t const len);
-int hasher_finish(hasher_t *const hasher);
-uint8_t const *hasher_get(hasher_t *const hasher, int const algo);
+int hasher_digests(hasher_t *const hasher, hash_digest_t *const out, size_t const count);
 
 enum {
 	HASH_EINVAL = -EINVAL,
