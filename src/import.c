@@ -168,9 +168,9 @@ static void connection(void *arg) {
 	}
 
 cleanup:
-	async_close((uv_handle_t *)pipe);
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
+	async_close((uv_handle_t *)pipe);
 	fprintf(stderr, "Import ended: %s\n", hx_strerror(rc));
 }
 static void connection_cb(uv_stream_t *const server, int const status) {

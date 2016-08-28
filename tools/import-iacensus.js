@@ -11,8 +11,8 @@ var csv = require("csv");
 
 var mime = require("./mime");
 
-if(process.argv.length <= 2) {
-	console.log("Usage: hash-archive-import-iacencus path");
+if(process.argv.length <= 3) {
+	console.log("Usage: hash-archive-import-iacencus algo path");
 	console.log("Warning: file's modification date is used for timestamp");
 	console.log("For large imports, see tuning tips in source");
 	process.exit(1);
@@ -29,6 +29,17 @@ process.on("uncaughtException", function(err) {
 function log(str) {
 	console.log((new Date).toISOString()+": "+str);
 }
+
+
+var ALGOS = [];
+ALGOS[0] = "md5";
+ALGOS[1] = "sha1";
+ALGOS[2] = "sha256";
+ALGOS[3] = "sha384";
+ALGOS[4] = "sha512";
+ALGOS[5] = "blake2s";
+ALGOS[6] = "blake2b";
+var ALGO_MAX = 7;
 
 function write_uint16(sock, val) {
 	var buf = new Buffer(2);
@@ -64,32 +75,31 @@ function write_response(sock, res) {
 	blocking = !write_uint64(sock, res.status+0xffff) || blocking;
 	blocking = !write_string(sock, res.type) || blocking;
 	blocking = !write_uint64(sock, res.length) || blocking;
-	blocking = !write_uint16(sock, res.digests.length) || blocking;
-	for(var i = 0; i < res.digests.length; i++) {
-		blocking = !write_blob(sock, res.digests[i]) || blocking;
+	blocking = !write_uint16(sock, ALGO_MAX) || blocking;
+	for(var i = 0; i < ALGO_MAX; i++) {
+		blocking = !write_blob(sock, res.digests[ALGOS[i]]) || blocking;
 	}
 	return !blocking;
 }
 
-function write_response_row(sock, time, row, cb) {
+function write_response_row(sock, time, algo, row, cb) {
 	var url = "https://archive.org/download/"+row[0]+"/"+row[1];
 	var ext = pathm.extname(row[1]) || null;
 //	if(ext && !has(mime, ext)) throw new Error("Unknown type of "+row[0]+"/"+row[1]);
 	var type = mime[ext];
-	var md5 = new Buffer(row[2], "hex");
-	var sha1 = row[3] ? new Buffer(row[3], "hex") : null;
+	var hash = new Buffer(row[2], "hex");
+//	var sha1 = row[3] ? new Buffer(row[3], "hex") : null;
 //	console.log(type, md5, sha1);
 
+	var digests = {};
+	digests[algo] = hash;
 	var blocking = !write_response(sock, {
 		time: time,
 		url: url,
 		status: 200,
 		type: type,
 		length: null,
-		digests: [
-			md5,
-			sha1,
-		],
+		digests: digests,
 	});
 	if(!blocking) return cb(null);
 	sock.once("flush", function() {
@@ -97,11 +107,19 @@ function write_response_row(sock, time, row, cb) {
 	});
 }
 
-var path = pathm.resolve(process.argv[2]);
+(function() {
+
+var algo = process.argv[2];
+var path = pathm.resolve(process.argv[3]);
 var file = fs.createReadStream(path);
 var gunzip = new zlib.Gunzip();
 var parser = csv.parse({ delimiter: "\t" });
 var time = null;
+
+if(-1 === ALGOS.indexOf(algo)) {
+	console.error("Invalid algorithm "+algo);
+	process.exit(1);
+}
 
 file.pipe(gunzip).pipe(parser);
 file.on("open", function(fd) {
@@ -119,7 +137,7 @@ parser.on("readable", function next() {
 	var row = parser.read();
 	if(!row) return;
 	wait = true;
-	write_response_row(stream, time, row, function(err) {
+	write_response_row(stream, time, algo, row, function(err) {
 		if(err) throw err;
 		wait = false;
 		next();
@@ -128,4 +146,6 @@ parser.on("readable", function next() {
 parser.on("end", function() {
 	stream.end();
 });
+
+})();
 
