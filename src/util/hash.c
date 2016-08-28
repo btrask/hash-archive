@@ -119,7 +119,7 @@ int hash_uri_parse_hash_uri(char const *const URI, hash_uri_t *const out) {
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
-		rc = regcomp_err(re, "^hash://([[:alnum:].-]+)/([[:alnum:].%_-]+)(\\?[[:alnum:].%_=&-]+)?(#[[:alnum:].%_-]+)?$", REG_EXTENDED|REG_ICASE);
+		rc = regcomp_err(re, "^hash://([[:alnum:].-]+)/([[:alnum:].%_-]*)(\\?[[:alnum:].%_=&-]+)?(#[[:alnum:].%_-]+)?$", REG_EXTENDED|REG_ICASE);
 		if(rc < 0) return rc;
 		initialized = true;
 	}
@@ -139,7 +139,7 @@ int hash_uri_parse_prefix(char const *const URI, hash_uri_t *const out) {
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
-		rc = regcomp_err(re, "^([[:alnum:]]+)-([[:alnum:]/+=]+)$", REG_EXTENDED);
+		rc = regcomp_err(re, "^([[:alnum:]]+)-([[:alnum:]/+=]*)$", REG_EXTENDED);
 		if(rc < 0) return rc;
 		initialized = true;
 	}
@@ -159,7 +159,7 @@ int hash_uri_parse_named_info(char const *const URI, hash_uri_t *const out) {
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
-		rc = regcomp_err(re, "^ni:///([[:alnum:].-]+);([[:alnum:]_-]+)$", REG_EXTENDED|REG_ICASE);
+		rc = regcomp_err(re, "^ni:///([[:alnum:].-]+);([[:alnum:]_-]*)$", REG_EXTENDED|REG_ICASE);
 		if(rc < 0) return rc;
 		initialized = true;
 	}
@@ -199,7 +199,7 @@ int hash_uri_parse_ssb(char const *const URI, hash_uri_t *const out) {
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
-		rc = regcomp_err(re, "^&([a-zA-Z0-9+/]{8,}={0,3})\\.([a-z0-9]{3,})$", REG_EXTENDED);
+		rc = regcomp_err(re, "^&([a-zA-Z0-9+/]*={0,3})\\.([a-z0-9]{3,})$", REG_EXTENDED);
 		if(rc < 0) return rc;
 		initialized = true;
 	}
@@ -219,7 +219,7 @@ int hash_uri_parse_magnet(char const *const URI, hash_uri_t *const out) {
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
-		rc = regcomp_err(re, "^magnet:.*(\\?|&)xt=urn:([a-z0-9]+):([a-z0-9]+)", REG_EXTENDED|REG_ICASE);
+		rc = regcomp_err(re, "^magnet:.*(\\?|&)xt=urn:([a-z0-9]+):([a-z0-9]*)", REG_EXTENDED|REG_ICASE);
 		if(rc < 0) return rc;
 		initialized = true;
 	}
