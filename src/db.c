@@ -67,15 +67,12 @@ int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_
 	db_bind_string(res_val, res->type, txn);
 	db_bind_uint64(res_val, res->length);
 
-	size_t nhash = 0;
 	for(size_t i = 0; i < numberof(res->digests); i++) {
 		size_t const len = res->digests[i].len;
 		db_assert(len <= hash_algo_digest_len(i));
 		db_bind_uint64(res_val, len);
 		db_bind_blob(res_val, res->digests[i].buf, len);
-		if(len) nhash++;
 	}
-	if(!nhash) return DB_EINVAL;
 
 	DB_VAL_STORAGE_VERIFY(res_val);
 	rc = db_put(txn, res_key, res_val, DB_NOOVERWRITE_FAST);
