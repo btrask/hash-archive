@@ -67,7 +67,7 @@ int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_
 	db_bind_string(res_val, res->type, txn);
 	db_bind_uint64(res_val, res->length);
 	for(size_t i = 0; i < numberof(res->digests); i++) {
-		size_t const len = hash_algo_digest_len(i);
+		db_assert(res->digests[i].len <= hash_algo_digest_len(i));
 		db_bind_uint64(res_val, res->digests[i].len);
 		db_bind_blob(res_val, res->digests[i].buf, res->digests[i].len);
 	}

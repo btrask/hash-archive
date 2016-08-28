@@ -74,8 +74,8 @@ static void HXTimeIDToResponseValUnpack(DB_val *const val, DB_txn *const txn, st
 			continue;
 		}
 		uint64_t const len = db_read_uint64(val);
+		db_assert(len <= hash_algo_digest_len(i));
 		unsigned char const *const buf = db_read_blob(val, len);
-		db_assert(len <= HASH_DIGEST_MAX);
 		out->digests[i].len = len;
 		memcpy(out->digests[i].buf, buf, len);
 	}

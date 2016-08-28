@@ -103,6 +103,7 @@ static ssize_t read_responses(uv_stream_t *const stream, struct response *const 
 			ssize_t len = read_blob(stream, out[x].digests[i].buf, HASH_DIGEST_MAX);
 			if(len < 0) rc = len;
 			if(rc < 0) goto cleanup;
+			db_assert(len <= hash_algo_digest_len(i));
 			out[x].digests[i].len = len;
 		}
 		for(size_t i = HASH_ALGO_MAX; i < hcount; i++) {
