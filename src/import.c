@@ -10,7 +10,7 @@
 #include "db.h"
 
 #define SOCKET_PATH "./import.sock"
-#define BUF_SIZE (1024*8)
+#define RESPONSE_BATCH_SIZE 50
 
 static int read_len(uv_stream_t *const stream, unsigned char *const out, size_t const len) {
 	// TODO: fix async_read?
@@ -77,45 +77,33 @@ static ssize_t read_blob(uv_stream_t *const stream, unsigned char *const out, si
 	if(rc < 0) return rc;
 	return len;
 }
-
-
-static void connection(void *arg) {
-	uv_stream_t *const server = arg;
-	uv_pipe_t pipe[1];
-	uv_stream_t *const stream = (uv_stream_t *)pipe;
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
-	uint64_t id = 0;
-
-	int rc = uv_pipe_init(async_loop, pipe, false);
-	if(rc < 0) goto cleanup;
-	rc = uv_accept(server, stream);
-	if(rc < 0) goto cleanup;
-
-	for(;;) {
-		struct response res[1];
+static ssize_t read_responses(uv_stream_t *const stream, struct response *const out, size_t const max) {
+	assert(out);
+	assert(max > 0);
+	if(!stream) return UV_EINVAL;
+	size_t x = 0;
+	for(; x < max; x++) {
 		uint64_t tmp;
 		uint16_t hcount;
-
-		rc = read_uint64(stream, &res->time);
+		int rc = read_uint64(stream, &out[x].time);
 		if(rc < 0) goto cleanup;
-		rc = read_string(stream, res->url, sizeof(res->url));
+		rc = read_string(stream, out[x].url, sizeof(out[x].url));
 		if(rc < 0) goto cleanup;
 		rc = read_uint64(stream, &tmp);
 		if(rc < 0) goto cleanup;
-		res->status = tmp - 0xffff;
-		rc = read_string(stream, res->type, sizeof(res->type));
+		out[x].status = tmp - 0xffff;
+		rc = read_string(stream, out[x].type, sizeof(out[x].type));
 		if(rc < 0) goto cleanup;
-		rc = read_uint64(stream, &res->length);
+		rc = read_uint64(stream, &out[x].length);
 		if(rc < 0) goto cleanup;
 
 		rc = read_uint16(stream, &hcount);
 		if(rc < 0) goto cleanup;
 		for(size_t i = 0; i < MIN(hcount, HASH_ALGO_MAX); i++) {
-			ssize_t len = read_blob(stream, res->digests[i].buf, HASH_DIGEST_MAX);
+			ssize_t len = read_blob(stream, out[x].digests[i].buf, HASH_DIGEST_MAX);
 			if(len < 0) rc = len;
 			if(rc < 0) goto cleanup;
-			res->digests[i].len = len;
+			out[x].digests[i].len = len;
 		}
 		for(size_t i = HASH_ALGO_MAX; i < hcount; i++) {
 			unsigned char discard[HASH_DIGEST_MAX];
@@ -124,20 +112,56 @@ static void connection(void *arg) {
 			if(rc < 0) goto cleanup;
 		}
 		for(size_t i = hcount; i < HASH_ALGO_MAX; i++) {
-			res->digests[i].len = 0;
+			out[x].digests[i].len = 0;
 		}
+	}
+cleanup:
+	return x;
+}
+
+
+static void connection(void *arg) {
+	uv_stream_t *const server = arg;
+	uv_pipe_t pipe[1];
+	uv_stream_t *const stream = (uv_stream_t *)pipe;
+	DB_env *db = NULL;
+	DB_txn *txn = NULL;
+	struct response *responses = NULL;
+	uint64_t id = 0;
+
+	int rc = uv_pipe_init(async_loop, pipe, false);
+	if(rc < 0) goto cleanup;
+	rc = uv_accept(server, stream);
+	if(rc < 0) goto cleanup;
+
+	responses = calloc(RESPONSE_BATCH_SIZE, sizeof(struct response));
+	if(!responses) rc = UV_ENOMEM;
+	if(rc < 0) goto cleanup;
+
+	for(;;) {
+
+		ssize_t count = read_responses(stream, responses, RESPONSE_BATCH_SIZE);
+		if(count < 0) rc = count;
+		if(rc < 0) goto cleanup;
 
 		rc = hx_db_open(&db);
 		if(rc < 0) goto cleanup;
 		rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
 		if(rc < 0) goto cleanup;
-		rc = hx_response_add(txn, res, id++);
-		if(rc < 0) goto cleanup;
+
+		for(size_t i = 0; i < count; i++) {
+			rc = hx_response_add(txn, &responses[i], id++);
+			if(rc < 0) goto cleanup;
+		}
+
 		rc = db_txn_commit(txn); txn = NULL;
 		if(rc < 0) goto cleanup;
 		hx_db_close(&db);
 
-		fprintf(stderr, "Imported %s\n", res->url);
+		fprintf(stderr, "Imported %zu\n", (size_t)count);
+
+		if(count < RESPONSE_BATCH_SIZE) rc = UV_EOF;
+		if(rc < 0) goto cleanup;
 
 	}
 
