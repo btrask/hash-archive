@@ -101,6 +101,7 @@ function write_response_row(sock, time, algo, row, cb) {
 		length: null,
 		digests: digests,
 	});
+	console.log(url);
 	if(!blocking) return cb(null);
 	sock.once("flush", function() {
 		cb(null);

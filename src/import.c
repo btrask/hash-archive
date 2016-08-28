@@ -115,7 +115,6 @@ static ssize_t read_responses(uv_stream_t *const stream, struct response *const 
 		for(size_t i = hcount; i < HASH_ALGO_MAX; i++) {
 			out[x].digests[i].len = 0;
 		}
-		fprintf(stderr, "Import request: %s\n", out[x].url);
 	}
 cleanup:
 	return x;
@@ -160,11 +159,8 @@ static void connection(void *arg) {
 		if(rc < 0) goto cleanup;
 		hx_db_close(&db);
 
-		fprintf(stderr, "Imported %zu\n", (size_t)count);
-
 		if(count < RESPONSE_BATCH_SIZE) rc = UV_EOF;
 		if(rc < 0) goto cleanup;
-
 	}
 
 cleanup:
