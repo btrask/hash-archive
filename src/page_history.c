@@ -2,6 +2,7 @@
 // MIT licensed (see LICENSE for details)
 
 #include <string.h>
+#include <async/http/status.h>
 #include "util/hash.h"
 #include "util/html.h"
 #include "util/strext.h"
@@ -98,9 +99,11 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 		return 0;
 	}
 	if(0 == strcmp(var, "error")) {
-		char x[31+1];
-		snprintf(x, sizeof(x), "%d", res->status);
-		// TODO: Print human-readable descriptions...
+		char const *const str = res->status < 0 ?
+			hx_strerror(res->status) :
+			statusstr(res->status);
+		char x[255+1];
+		snprintf(x, sizeof(x), "%d (%s)", res->status, str);
 		return wr(wctx, uv_buf_init(x, strlen(x)));
 	}
 
