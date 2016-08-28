@@ -4,34 +4,148 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 #include <async/async.h>
+#include "util/hash.h"
+#include "db.h"
 
 #define SOCKET_PATH "./import.sock"
 #define BUF_SIZE (1024*8)
 
+static int read_len(uv_stream_t *const stream, unsigned char *const out, size_t const len) {
+	// TODO: fix async_read?
+	assert(out);
+	if(!len) return 0;
+	uv_buf_t buf[1];
+	int rc;
+	do rc = async_read(stream, len, buf);
+	while(UV_EAGAIN == rc); // WTF?
+	if(rc < 0) return rc;
+	if(buf->len < len) rc = UV_EOF;
+	if(rc < 0) goto cleanup;
+	memcpy(out, buf->base, len);
+cleanup:
+	free(buf->base); buf->base = NULL;
+	return rc;
+}
+static int read_uint16(uv_stream_t *const stream, uint16_t *const out) {
+	assert(out);
+	unsigned char x[2];
+	int rc = read_len(stream, x, sizeof(x));
+	if(rc < 0) return rc;
+	*out =
+		(uint16_t)x[0] << 8 |
+		(uint16_t)x[1] << 0;
+	return 0;
+}
+static int read_uint64(uv_stream_t *const stream, uint64_t *const out) {
+	assert(out);
+	unsigned char x[8];
+	int rc = read_len(stream, x, sizeof(x));
+	if(rc < 0) return rc;
+	*out =
+		(uint64_t)x[0] << 56 |
+		(uint64_t)x[1] << 48 |
+		(uint64_t)x[2] << 40 |
+		(uint64_t)x[3] << 32 |
+		(uint64_t)x[4] << 24 |
+		(uint64_t)x[5] << 16 |
+		(uint64_t)x[6] <<  8 |
+		(uint64_t)x[7] <<  0;
+	return 0;
+}
+static int read_string(uv_stream_t *const stream, char *const out, size_t const max) {
+	assert(out);
+	assert(max > 0);
+	uint16_t len = 0;
+	int rc = read_uint16(stream, &len);
+	if(rc < 0) return rc;
+	if(len+1 > max) return UV_EMSGSIZE;
+	rc = read_len(stream, (unsigned char *)out, len);
+	if(rc < 0) return rc;
+	out[len] = '\0';
+	return 0;
+}
+static ssize_t read_blob(uv_stream_t *const stream, unsigned char *const out, size_t const max) {
+	assert(out);
+	assert(max > 0);
+	uint16_t len = 0;
+	int rc = read_uint16(stream, &len);
+	if(rc < 0) return rc;
+	if(len > max) return UV_EMSGSIZE;
+	rc = read_len(stream, out, len);
+	if(rc < 0) return rc;
+	return len;
+}
+
+
 static void connection(void *arg) {
 	uv_stream_t *const server = arg;
-	uv_pipe_t conn[1];
-	int rc = uv_pipe_init(async_loop, conn, false);
+	uv_pipe_t pipe[1];
+	uv_stream_t *const stream = (uv_stream_t *)pipe;
+
+	int rc = uv_pipe_init(async_loop, pipe, false);
 	if(rc < 0) goto cleanup;
-	rc = uv_accept(server, (uv_stream_t *)conn);
+	rc = uv_accept(server, stream);
 	if(rc < 0) goto cleanup;
 
 	for(;;) {
-		uv_buf_t buf[1];
-		rc = async_read((uv_stream_t *)conn, BUF_SIZE, buf);
-		if(rc < 0) break;
-		fprintf(stderr, "read %zu\n", buf->len);
-		free(buf->base); buf->base = NULL;
+		struct response res[1];
+		uint64_t tmp;
+		uint16_t hcount;
+
+		rc = read_uint64(stream, &res->time);
+		if(rc < 0) goto cleanup;
+		rc = read_string(stream, res->url, sizeof(res->url));
+		if(rc < 0) goto cleanup;
+		rc = read_uint64(stream, &tmp);
+		if(rc < 0) goto cleanup;
+		res->status = tmp - 0xffff;
+		rc = read_string(stream, res->type, sizeof(res->type));
+		if(rc < 0) goto cleanup;
+		rc = read_uint64(stream, &res->length);
+		if(rc < 0) goto cleanup;
+
+		rc = read_uint16(stream, &hcount);
+		if(rc < 0) goto cleanup;
+		for(size_t i = 0; i < MIN(hcount, HASH_ALGO_MAX); i++) {
+			ssize_t len = read_blob(stream, res->hashes[i], HASH_DIGEST_MAX);
+			if(len < 0) rc = len;
+			if(rc < 0) goto cleanup;
+			res->hlen[i] = len;
+		}
+		for(size_t i = HASH_ALGO_MAX; i < hcount; i++) {
+			unsigned char discard[HASH_DIGEST_MAX];
+			ssize_t len = read_blob(stream, discard, HASH_DIGEST_MAX);
+			if(len < 0) rc = len;
+			if(rc < 0) goto cleanup;
+		}
+		for(size_t i = hcount; i < HASH_ALGO_MAX; i++) {
+			res->hlen[i] = 0;
+		}
+
+		// TODO: Store response.
+		fprintf(stderr, "%llu - %s\n", (unsigned long long)res->time, res->url);
+		char x[URI_MAX];
+		hash_uri_t zz = {
+			.type = LINK_HASH_URI,
+			.algo = HASH_ALGO_SHA256,
+			.buf = res->hashes[HASH_ALGO_SHA256],
+			.len = res->hlen[HASH_ALGO_SHA256],
+		};
+		hash_uri_format(&zz, x, sizeof(x));
+		fprintf(stderr, "test %s\n", x);
+
 	}
 
 cleanup:
-	async_close((uv_handle_t *)conn);
-	fprintf(stderr, "closed\n");
+	async_close((uv_handle_t *)pipe);
+	fprintf(stderr, "closed %s\n", uv_strerror(rc));
 }
 static void connection_cb(uv_stream_t *const server, int const status) {
 	async_spawn(STACK_DEFAULT, connection, server);
 }
+
 int import_init(void) {
 	static uv_pipe_t pipe[1];
 
