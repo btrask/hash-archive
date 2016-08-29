@@ -54,7 +54,7 @@ Recently fetched URLs
 <div class="entry margin">
 <div>FAQ</div>
 
-<p><i>What kind of questions can Hash Archive answer?</i></p>
+<p><b>What kind of questions can Hash Archive answer?</b></p>
 <p>It can answer questions such as:</p>
 <ul>
 <li>Was this file downloaded from that URL?
@@ -64,7 +64,7 @@ Recently fetched URLs
 <li>Where did this file come from?
 </ul>
 
-<p><i>How can I compute and verify my own hashes?</i></p>
+<p><b>How can I compute and verify my own hashes?</b></p>
 <p>There are several options:</p>
 <ul>
 <li>Hash URIs (CLI): use <a href="https://github.com/hash-uri/hash-uri/tree/master/cli">hash-uri</a>, which can compute hashes and do validation for you
@@ -75,27 +75,27 @@ Recently fetched URLs
 <li>GUI apps: unknown
 </ul>
 
-<p><i>Are hashes actually secure?</i></p>
+<p><b>Are hashes actually secure?</b></p>
 <p>If they use a good algorithm and are at least 16-24 bytes long, then yes.</p>
 
-<p><i>Is it better to use even longer hashes like SHA-384 or SHA-512?</i></p>
+<p><b>Is it better to use even longer hashes like SHA-384 or SHA-512?</b></p>
 <p>There are diminishing returns. Past a certain point, the length does not matter. I'm not qualified to comment on differences in the algorithms themselves, but SHA-256 is widely accepted.</p>
 <p>You can check the probability tables for hash collisions yourself <a href="https://en.wikipedia.org/wiki/Birthday_problem#Probability_table">here</a>.</p>
 
-<p><i>What do <sup>[#]</sup> links do?</i></p>
+<p><b>What do <sup>[#]</sup> links do?</b></p>
 <p>Those provide the hash as a raw link, for formats that support it. In theory you could use it to resolve the hash through a different system. However, you need the appropriate protocol handler, and for now software support is mostly non-existant. My other project <a href="https://github.com/btrask/stronglink">StrongLink</a> has limited support, if you configure it. A big problem is <a href="https://html.spec.whatwg.org/#safelisted-scheme">the protocol safelist</a>, which makes it difficult for web apps to resolve hashes (see complaints <a href="https://github.com/jquery/standards/issues/12">here</a> and <a href="https://lists.w3.org/Archives/Public/public-whatwg-archive/2015Mar/0011.html">here</a>).</p>
 <p>If you right click the <sup>[#]</sup> and choose "copy link," you'll get a link you can paste into a resolver (such as StrongLink) or chat/email.</p>
 
-<p id="compat"><i>Why aren't the MultiHashes compatible with IPFS, or the Magnet URIs compatible with BitTorrent?</i></p>
+<p id="compat"><b>Why aren't the MultiHashes compatible with IPFS, or the Magnet URIs compatible with BitTorrent?</b></p>
 <p>IPFS and BitTorrent compute their hashes in their own protocol-specific ways. BitTorrent hashes vary depending on the file name (amongst other things) and IPFS hashes vary depending on the chunker used. See my article, <a href="TODO">The Principles of Content Addressing</a>, or this <a href="https://github.com/ipfs/go-ipfs/issues/1953">IPFS bug report</a>. However, you can submit URLs from the <a href="TODO">ipfs.io gateway</a> to bridge between them.</p>
 
-<p><i>Is there an API?</i></p>
+<p><b>Is there an API?</b></p>
 <p>Not yet, but support is planned. For now, please use a <a href="./database.sql.gz">database snapshot</a>.</p>
 
-<p><i>Can you add a new algorithm?</i></p>
+<p><b>Can you add a new algorithm?</b></p>
 <p>Yes, if: 1. the algorithm is relatively efficient, 2. it's in widespread use or in high demand, and 3. if there is a drop-in Node.js module we can use. Please check our <a href="https://github.com/btrask/hash-archive/issues">issues list</a> and open a new one if it hasn't been proposed already.</p>
 
-<p><i>Why not use the Web of Trust?</i></p>
+<p><b>Why not use the Web of Trust?</b></p>
 <p>This is a link in the Web of Trust.</p>
 
 <p class="footer">Created by <a href="https://bentrask.com">Ben Trask</a> in association with <a href="https://archivelab.org">Archive Labs</a></p>
