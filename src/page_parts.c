@@ -87,7 +87,7 @@ char *direct_link_html(hash_uri_type const type, strarg_t const URI_unsafe) {
 		escaped, escaped); break;
 	case LINK_MULTIHASH:
 	case LINK_PREFIX:
-	case LINK_SSB: r = aasprintf("<span>%s</span>", escaped); break;;
+	case LINK_SSB: r = aasprintf("<span>%s</span>", escaped); break;
 	default: assertf(0, "Unknown link type %d", type);
 	}
 	free(escaped); escaped = NULL;
