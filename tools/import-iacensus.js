@@ -102,10 +102,15 @@ function write_response_row(sock, time, algo, row, cb) {
 		digests: digests,
 	});
 	console.log(url);
-	if(!blocking) return cb(null);
-	sock.once("flush", function() {
-		cb(null);
-	});
+	if(!blocking) {
+		process.nextTick(function() {
+			cb(null);
+		});
+	} else {
+		sock.once("drain", function() {
+			cb(null);
+		});
+	}
 }
 
 (function() {
