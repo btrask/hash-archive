@@ -109,7 +109,7 @@ static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, str
 	// TODO: Decode obj->path.
 
 	char path[4095+1];
-	rc = path_subpath_secure("/home/user/Code/hash-archive/static/", obj->path, path, sizeof(path)); // TODO
+	rc = path_subpath_secure("./static/", obj->path, path, sizeof(path)); // TODO
 	if(rc < 0) return HTTPError(rc);
 
 	strarg_t const type = path_exttype(path_extname(path));

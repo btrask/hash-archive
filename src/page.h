@@ -27,7 +27,7 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI);
 static void template_load(strarg_t const path, TemplateRef *const out) {
 	// TODO
 	char full[4095+1];
-	int rc = snprintf(full, sizeof(full), "/home/user/Code/hash-archive/templates/%s", path);
+	int rc = snprintf(full, sizeof(full), "./templates/%s", path);
 	assertf(rc >= 0, "Template path error: %s\n", strerror(errno));
 	assert(rc < sizeof(full));
 	rc = TemplateCreateFromPath(full, out);
