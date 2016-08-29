@@ -36,13 +36,6 @@ void hx_db_close(DB_env **const in) {
 	async_pool_leave(NULL);
 }
 
-char const *hx_strerror(int const rc) {
-	if(rc >= 0) return "No error";
-	char const *x = db_strerror(rc);
-	if(x) return x;
-	return uv_strerror(rc);
-}
-
 int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_t const id) {
 	assert(txn);
 	assert(res);

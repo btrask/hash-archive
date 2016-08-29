@@ -10,6 +10,7 @@
 #include "page.h"
 #include "db.h"
 #include "common.h"
+#include "errors.h"
 
 // TODO
 int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);

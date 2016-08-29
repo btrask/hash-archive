@@ -8,6 +8,7 @@
 #include <async/async.h>
 #include "util/hash.h"
 #include "db.h"
+#include "errors.h"
 
 #define SOCKET_PATH "./import.sock"
 #define RESPONSE_BATCH_SIZE 50

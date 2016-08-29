@@ -12,6 +12,7 @@
 #include "util/url.h"
 #include "db.h"
 #include "page.h"
+#include "errors.h"
 
 int url_fetch(strarg_t const URL, strarg_t const client, struct response *const out);
 

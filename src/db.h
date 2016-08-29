@@ -26,8 +26,6 @@ int hx_db_load(void);
 int hx_db_open(DB_env **const out);
 void hx_db_close(DB_env **const in);
 
-char const *hx_strerror(int const rc);
-
 int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_t const id);
 
 ssize_t hx_get_recent(struct response *const out, size_t const max);
