@@ -19,7 +19,7 @@ int hasher_create(uint64_t const algos, hasher_t **const out) {
 	hasher_t *hasher = calloc(1, sizeof(struct hasher_s));
 	if(!hasher) return HASH_ENOMEM;
 	int rc = 0;
-#define XX(val, name, len, str) \
+#define XX(val, name, xlen, str) \
 	if(1 << (val) & algos) { \
 		hasher->state[(val)] = malloc(sizeof(name##_CTX)); \
 		if(!hasher->state[(val)]) rc = HASH_ENOMEM; \
@@ -37,7 +37,7 @@ cleanup:
 void hasher_free(hasher_t **const hasherptr) {
 	hasher_t *hasher = *hasherptr; *hasherptr = NULL;
 	if(!hasher) return;
-#define XX(val, name, len, str) \
+#define XX(val, name, xlen, str) \
 	free(hasher->state[(val)]); hasher->state[(val)] = NULL;
 	HASH_ALGOS(XX)
 #undef XX
@@ -45,7 +45,7 @@ void hasher_free(hasher_t **const hasherptr) {
 }
 int hasher_update(hasher_t *const hasher, unsigned char const *const buf, size_t const len) {
 	if(!hasher) return 0;
-#define XX(val, name, len, str) \
+#define XX(val, name, xlen, str) \
 	if(hasher->state[(val)]) { \
 		int rc = name##_Update(hasher->state[(val)], buf, len); \
 		if(rc < 0) return rc; \
@@ -55,7 +55,11 @@ int hasher_update(hasher_t *const hasher, unsigned char const *const buf, size_t
 	return 0;
 }
 int hasher_digests(hasher_t *const hasher, hash_digest_t *const out, size_t const count) {
+	assert(out);
 	if(!hasher) return 0;
+	for(size_t i = 0; i < count; i++) {
+		out[i].len = 0;
+	}
 #define XX(val, name, xlen, str) \
 	if((val) < count && hasher->state[(val)]) { \
 		int rc = name##_Final(out[(val)].buf, hasher->state[(val)]); \
@@ -64,9 +68,6 @@ int hasher_digests(hasher_t *const hasher, hash_digest_t *const out, size_t cons
 	}
 	HASH_ALGOS(XX)
 #undef XX
-	for(size_t i = HASH_ALGO_MAX; i < count; i++) {
-		out[i].len = 0;
-	}
 	return 0;
 }
 
