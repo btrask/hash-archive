@@ -8,3 +8,4 @@ deps/uv/uv.xcodeproj
 import.sock
 node_modules
 test.db
+test.db-lock
