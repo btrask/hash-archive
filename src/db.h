@@ -30,6 +30,7 @@ char const *hx_strerror(int const rc);
 
 int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_t const id);
 
+ssize_t hx_get_recent(struct response *const out, size_t const max);
 ssize_t hx_get_history(strarg_t const URL, struct response *const out, size_t const max);
 ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, size_t const max);
 
@@ -58,6 +59,12 @@ enum {
 	db_bind_uint64((range)->min, HXTimeIDToResponse); \
 	db_range_genmax((range)); \
 	DB_RANGE_STORAGE_VERIFY(range);
+static void HXTimeIDToResponseKeyUnpack(DB_val *const val, uint64_t *const time, uint64_t *const id) {
+	uint64_t const table = db_read_uint64(val);
+	assert(HXTimeIDToResponse == table);
+	*time = db_read_uint64(val);
+	*id = db_read_uint64(val);
+}
 static void HXTimeIDToResponseValUnpack(DB_val *const val, DB_txn *const txn, struct response *const out) {
 	assert(out);
 	strarg_t const url = db_read_string(val, txn);

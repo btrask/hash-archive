@@ -5,6 +5,7 @@
 #include <string.h>
 #include "util/hash.h"
 #include "util/html.h"
+#include "db.h"
 #include "page.h"
 
 static TemplateRef index = NULL;
@@ -58,7 +59,18 @@ static int template_var(void *const actx, char const *const var, TemplateWriteFn
 		return write_link(wr, wctx, LINK_MAGNET, example_magnet);
 	}
 
-	if(0 == strcmp(var, "recent-list")) return 0;
+	if(0 == strcmp(var, "recent-list")) {
+		struct response recent[10];
+		ssize_t const count = hx_get_recent(recent, 10);
+		if(count < 0) return 0;
+		for(size_t i = 0; i < count; i++) {
+			char *x = item_html(LINK_WEB_URL, "", recent[i].url, false);
+			if(!x) return UV_ENOMEM;
+			int rc = wr(wctx, uv_buf_init(x, strlen(x)));
+			free(x); x = NULL;
+			if(rc < 0) return rc;
+		}
+	}
 
 	if(0 == strcmp(var, "critical-list")) {
 		for(size_t i = 0; i < numberof(critical); i++) {
