@@ -101,7 +101,7 @@ function write_response_row(sock, time, algo, row, cb) {
 		length: null,
 		digests: digests,
 	});
-	console.log(url);
+//	console.log(url);
 	if(!blocking) {
 		process.nextTick(function() {
 			cb(null);
@@ -121,6 +121,7 @@ var file = fs.createReadStream(path);
 var gunzip = new zlib.Gunzip();
 var parser = csv.parse({ delimiter: "\t" });
 var time = null;
+var counter = 0, total = 0;
 
 if(-1 === ALGOS.indexOf(algo)) {
 	console.error("Invalid algorithm "+algo);
@@ -134,6 +135,11 @@ file.on("open", function(fd) {
 });
 
 var stream = net.createConnection("./import.sock");
+var interval = setInterval(function() {
+	total += counter;
+	console.log("\t"+counter+" per second, \t"+total+" total");
+	counter = 0;
+}, 1000*1);
 
 // Fuck node-csv forever.
 // parser.pause() is completely broken.
@@ -146,11 +152,13 @@ parser.on("readable", function next() {
 	write_response_row(stream, time, algo, row, function(err) {
 		if(err) throw err;
 		wait = false;
+		counter++;
 		next();
 	});
 });
 parser.on("end", function() {
 	stream.end();
+	clearInterval(interval);
 });
 
 })();
