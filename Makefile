@@ -60,6 +60,7 @@ OBJECTS := \
 	$(BUILD_DIR)/src/util/strext.o \
 	$(BUILD_DIR)/src/util/hasher.o \
 	$(BUILD_DIR)/src/util/hash.o \
+	$(BUILD_DIR)/src/util/markdown.o \
 	$(BUILD_DIR)/src/util/path.o \
 	$(BUILD_DIR)/src/util/url.o \
 	$(BUILD_DIR)/src/util/Template.o \
@@ -68,6 +69,7 @@ OBJECTS := \
 	$(BUILD_DIR)/src/page_index.o \
 	$(BUILD_DIR)/src/page_history.o \
 	$(BUILD_DIR)/src/page_sources.o \
+	$(BUILD_DIR)/src/page_critical.o \
 	$(BUILD_DIR)/src/fetch.o \
 	$(BUILD_DIR)/src/queue.o \
 	$(BUILD_DIR)/src/import.o \
@@ -92,7 +94,10 @@ STATIC_LIBS += $(DEPS_DIR)/libkvstore/deps/leveldb/out-static/libleveldb.a
 STATIC_LIBS += $(DEPS_DIR)/libkvstore/deps/snappy/.libs/libsnappy.a
 STATIC_LIBS += $(DEPS_DIR)/libkvstore/deps/liblmdb/liblmdb.a
 CFLAGS += -I$(DEPS_DIR)/libkvstore/include
-CFLAGS += -lstdc++
+LIBS += -lstdc++
+
+STATIC_LIBS += $(DEPS_DIR)/cmark/build/src/libcmark.a
+CFLAGS += -I$(DEPS_DIR)/cmark/src -I$(DEPS_DIR)/cmark/build/src
 
 
 .PHONY: all
@@ -102,7 +107,7 @@ $(BUILD_DIR)/hash-archive: $(OBJECTS) $(STATIC_LIBS)
 	@- mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(WARNINGS) $(OBJECTS) $(STATIC_LIBS) $(LIBS) -o $@
 
-$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c | libasync libkvstore
+$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c | cmark libasync libkvstore
 	@- mkdir -p $(dir $@)
 	@- mkdir -p $(dir $(BUILD_DIR)/h/src/$*.d)
 	$(CC) -c $(CFLAGS) $(WARNINGS) -MMD -MP -MF $(BUILD_DIR)/h/src/$*.d -o $@ $<
@@ -116,9 +121,16 @@ clean:
 
 .PHONY: distclean
 distclean: clean
+	- $(MAKE) distclean -C $(DEPS_DIR)/cmark
 	- $(MAKE) distclean -C $(DEPS_DIR)/libasync
 	- $(MAKE) distclean -C $(DEPS_DIR)/libkvstore
 
+
+$(DEPS_DIR)/cmark/build/src/*.h: | cmark
+$(DEPS_DIR)/cmark/build/src/libcmark.a: | cmark
+.PHONY: cmark
+cmark:
+	$(MAKE) -C $(DEPS_DIR)/cmark --no-print-directory
 
 # TODO: Have libasync bundle these directly.
 $(DEPS_DIR)/libasync/build/libasync.a: | libasync

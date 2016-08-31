@@ -3,8 +3,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "util/hash.h"
-#include "util/html.h"
 #include "db.h"
 #include "page.h"
 

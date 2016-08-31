@@ -3,8 +3,6 @@
 
 #include <string.h>
 #include <async/http/status.h>
-#include "util/hash.h"
-#include "util/html.h"
 #include "util/strext.h"
 #include "util/url.h"
 #include "page.h"

@@ -2,8 +2,6 @@
 // MIT licensed (see LICENSE for details)
 
 #include <string.h>
-#include "util/hash.h"
-#include "util/html.h"
 #include "page.h"
 #include "db.h"
 #include "common.h"

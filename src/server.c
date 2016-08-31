@@ -99,6 +99,11 @@ static int GET_sources(HTTPConnectionRef const conn, HTTPMethod const method, st
 	if('\0' == hash[0]) return -1;
 	return HTTPError(page_sources(conn, hash));
 }
+static int GET_critical(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
+	if(0 != uripathcmp(URI, "/critical/", NULL)) return -1;
+	return HTTPError(page_critical(conn));
+}
 static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 
@@ -165,6 +170,7 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	rc = rc >= 0 ? rc : POST_lookup(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_history(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_sources(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : GET_critical(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_static(conn, method, URI, headers);
 	if(rc < 0) rc = 404;
 	if(rc > 0) HTTPConnectionSendStatus(conn, rc);

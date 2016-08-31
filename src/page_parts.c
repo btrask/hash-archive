@@ -3,8 +3,6 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include "util/hash.h"
-#include "util/html.h"
 #include "util/strext.h"
 #include "page.h"
 
