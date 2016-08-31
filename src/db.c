@@ -58,7 +58,8 @@ int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_
 	db_bind_string(res_val, res->url, txn);
 	db_bind_uint64(res_val, (uint64_t)sstatus);
 	db_bind_string(res_val, res->type, txn);
-	db_bind_uint64(res_val, res->length);
+	assert(0 == (uint64_t)UINT64_MAX+1);
+	db_bind_uint64(res_val, res->length+1); // UINT64_MAX -> 0
 
 	for(size_t i = 0; i < numberof(res->digests); i++) {
 		size_t const len = res->digests[i].len;

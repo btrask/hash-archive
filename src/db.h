@@ -72,7 +72,8 @@ static void HXTimeIDToResponseValUnpack(DB_val *const val, DB_txn *const txn, st
 	strlcpy(out->url, url, sizeof(out->url));
 	out->status = status;
 	strlcpy(out->type, type, sizeof(out->type));
-	out->length = length;
+	assert(UINT64_MAX == (uint64_t)-1);
+	out->length = length-1; // 0 -> UINT64_MAX
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		if(0 == val->size) {
 			out->digests[i].len = 0;
