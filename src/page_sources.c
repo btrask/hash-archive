@@ -2,6 +2,7 @@
 // MIT licensed (see LICENSE for details)
 
 #include <string.h>
+#include "util/strext.h"
 #include "page.h"
 #include "db.h"
 #include "common.h"
@@ -72,12 +73,29 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 
 	res_merge_common_urls(responses, count);
 
+	// These don't need escaping because they are restricted character sets.
+	char hex[HASH_DIGEST_MAX*2+1];
+	rc = hex_encode(obj->buf, obj->len, hex, sizeof(hex));
+	assert(rc >= 0);
+	char multihash[URI_MAX];
+	obj->type = LINK_MULTIHASH;
+	rc = hash_uri_format(obj, multihash, sizeof(multihash));
+	assert(rc >= 0);
+
 	char *escaped = html_encode(URI);
 	char *hash_link = direct_link_html(obj->type, URI);
+	char *google_url = aasprintf("https://www.google.com/search?q=%s", hex);
+	char *ddg_url = aasprintf("https://duckduckgo.com/?q=%s", hex);
+	char *ipfs_url = aasprintf("https://ipfs.io/api/v0/block/get?arg=%s", multihash);
+	char *virustotal_url = aasprintf("https://www.virustotal.com/en/file/%s/analysis/", hex);
 
 	TemplateStaticArg args[] = {
 		{"query", escaped},
 		{"hash-link", hash_link},
+		{"google-url", google_url},
+		{"duckduckgo-url", ddg_url},
+		{"ipfs-block-url", ipfs_url},
+		{"virustotal-url", virustotal_url},
 		{NULL, NULL},
 	};
 
@@ -103,6 +121,10 @@ cleanup:
 	FREE(&responses);
 	FREE(&escaped);
 	FREE(&hash_link);
+	FREE(&google_url);
+	FREE(&ddg_url);
+	FREE(&ipfs_url);
+	FREE(&virustotal_url);
 	return 0;
 }
 
