@@ -4,8 +4,16 @@
 <title>History for {{url}}</title>
 <link rel="stylesheet" type="text/css" href="/index.css">
 
-<div class="margin"><a href="/">Hash Archive</a></div>
-<h1 class="margin break">History for {{url-link}}</h1>
+<h1 class="margin"><a href="/">Hash Archive</a> <sup>(beta)</sup></h1>
+
+<form class="lookup margin" method="post" action="/lookup">
+<label>URL or hash:</label>
+<div class="field wrap"><input type="text" name="str" value="{{query}}"></div>
+<div class="submit wrap"><input type="submit" value="Lookup"></div>
+</form>
+
+<h2 class="margin break">History for {{url-link}}</h2>
+
 <ul>
 <li><a href="{{wayback-url}}">Check this URL on the Wayback Machine</a>
 <li><a href="{{google-url}}">Check this URL on Google Cache</a>

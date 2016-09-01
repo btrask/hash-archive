@@ -72,9 +72,11 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 
 	res_merge_common_urls(responses, count);
 
+	char *escaped = html_encode(URI);
 	char *hash_link = direct_link_html(obj->type, URI);
 
 	TemplateStaticArg args[] = {
+		{"query", escaped},
 		{"hash-link", hash_link},
 		{NULL, NULL},
 	};
@@ -99,6 +101,7 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 
 cleanup:
 	FREE(&responses);
+	FREE(&escaped);
 	FREE(&hash_link);
 	return 0;
 }

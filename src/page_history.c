@@ -162,6 +162,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	res_merge_common_hashes(responses, count);
 
 	TemplateStaticArg args[] = {
+		{"query", escaped},
 		{"url-link", link},
 		{"wayback-url", wayback_url},
 		{"google-url", google_url},

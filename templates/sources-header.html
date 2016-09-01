@@ -4,8 +4,16 @@
 <title>Sources for {{hash}}</title>
 <link rel="stylesheet" type="text/css" href="/index.css">
 
-<div class="margin"><a href="/">Hash Archive</a></div>
-<h1 class="margin break">Sources for {{hash-link}}</h1>
+<h1 class="margin"><a href="/">Hash Archive</a> <sup>(beta)</sup></h1>
+
+<form class="lookup margin" method="post" action="/lookup">
+<label>URL or hash:</label>
+<div class="field wrap"><input type="text" name="str" value="{{query}}"></div>
+<div class="submit wrap"><input type="submit" value="Lookup"></div>
+</form>
+
+<h2 class="margin break">Sources for {{hash-link}}</h2>
+
 <ul>
 <li><a href="{{google-url}}">Search for this hash on Google</a>
 <li><a href="{{duckduckgo-url}}">Search for this hash on DuckDuckGo</a>
