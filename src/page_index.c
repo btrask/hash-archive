@@ -82,6 +82,12 @@ static int template_var(void *const actx, char const *const var, TemplateWriteFn
 		return 0;
 	}
 
+	if(0 == strcmp(var, "host")) {
+		// TODO: getenv("HX_HOSTNAME") ?
+		// Config system?
+		return wr(wctx, uv_buf_init((char *)STR_LEN("hash-archive.org")));
+	}
+
 	return UV_ENOENT;
 }
 
