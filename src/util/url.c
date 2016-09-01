@@ -20,7 +20,7 @@ static void strlower(char *const str) {
 }
 int url_parse(char const *const URL, url_t *const out) {
 	assert(out);
-	if(!URL) return -EINVAL;
+	if(!URL) return URL_EINVAL;
 	out->scheme[0] = '\0';
 	out->host[0] = '\0';
 	out->path[0] = '\0';
@@ -29,21 +29,21 @@ int url_parse(char const *const URL, url_t *const out) {
 		// Scheme-relative
 		sscanf(URL, "//" URL_HOST_FMT URL_PATH_FMT URL_QUERY_FMT,
 			out->host, out->path, out->query);
-		if('\0' == out->host[0]) return -EINVAL;
+		if('\0' == out->host[0]) return URL_EPARSE;
 	} else if('/' == URL[0]) {
 		// Host-relative
 		sscanf(URL, URL_PATH_FMT URL_QUERY_FMT,
 			out->path, out->query);
-		if('/' != out->path[0]) return -EINVAL;
+		if('/' != out->path[0]) return URL_EPARSE;
 	} else {
 		// Absolute
 		sscanf(URL, URL_SCHEME_FMT "://" URL_HOST_FMT URL_PATH_FMT URL_QUERY_FMT,
 			out->scheme, out->host, out->path, out->query);
-		if('\0' == out->scheme[0]) return -EINVAL;
-		if('\0' == out->host[0]) return -EINVAL;
+		if('\0' == out->scheme[0]) return URL_EPARSE;
+		if('\0' == out->host[0]) return URL_EPARSE;
 	}
-	if('\0' != out->path[0] && '/' != out->path[0]) return -EINVAL;
-	if('\0' != out->query[0] && '?' != out->query[0]) return -EINVAL;
+	if('\0' != out->path[0] && '/' != out->path[0]) return URL_EPARSE;
+	if('\0' != out->query[0] && '?' != out->query[0]) return URL_EPARSE;
 	strlower(out->scheme);
 	strlower(out->host);
 	return 0;
@@ -51,7 +51,7 @@ int url_parse(char const *const URL, url_t *const out) {
 int url_format(url_t const *const URL, char *const out, size_t const max) {
 	assert(out);
 	assert(max > 0);
-	if(!URL) return -EINVAL;
+	if(!URL) return URL_EINVAL;
 	int rc = snprintf(out, max, "%s://%s%s%s",
 		URL->scheme, URL->host, URL->path, URL->query);
 	if(rc >= max) return -ENAMETOOLONG;
@@ -61,18 +61,18 @@ int url_format(url_t const *const URL, char *const out, size_t const max) {
 
 int host_parse(char const *const host, host_t *const out) {
 	assert(out);
-	if(!host) return -EINVAL;
+	if(!host) return URL_EINVAL;
 	out->domain[0] = '\0';
 	out->port = 0;
 	sscanf(host, URL_DOMAIN_FMT ":%u", out->domain, &out->port);
-	if('\0' == out->domain[0]) return -EINVAL;
-	if(out->port > UINT16_MAX) return -EINVAL;
+	if('\0' == out->domain[0]) return URL_EPARSE;
+	if(out->port > UINT16_MAX) return URL_EPARSE;
 	return 0;
 }
 int host_format(host_t const *const host, char *const out, size_t const max) {
 	assert(out);
 	assert(max > 0);
-	if(!host) return -EINVAL;
+	if(!host) return URL_EINVAL;
 	int rc = 0;
 	if(host->port) {
 		rc = snprintf(out, max, "%s:%u", host->domain, host->port);
@@ -97,7 +97,7 @@ int url_normalize(char const *const URL, char *const out, size_t const max) {
 static int domain_reverse(char const *const domain, char *const out, size_t const max) {
 	assert(out);
 	assert(max > 0);
-	if(!domain) return -EINVAL;
+	if(!domain) return URL_EINVAL;
 	// TODO:
 	// 1. Silently truncates domains with more than 8 levels
 	// 2. Silently truncates broken domains
@@ -128,7 +128,7 @@ static int domain_reverse(char const *const domain, char *const out, size_t cons
 int url_normalize_surt(char const *const URL, char *const out, size_t const max) {
 	assert(out);
 	assert(max > 0);
-	if(!URL) return -EINVAL;
+	if(!URL) return URL_EINVAL;
 	url_t url_parsed[1];
 	host_t host_parsed[1];
 	char domain_tmp[URL_DOMAIN_MAX];

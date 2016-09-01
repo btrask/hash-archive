@@ -151,6 +151,13 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	char *virustotal_url = NULL;
 	int rc = 0;
 
+	url_t obj[1];
+	rc = url_parse(URL, obj);
+	if(rc < 0) goto cleanup;
+	if(	0 != strcasecmp(obj->scheme, "http") &&
+		0 != strcasecmp(obj->scheme, "https")) rc = URL_EPARSE;
+	if(rc < 0) goto cleanup;
+
 	responses = calloc(RESPONSES_MAX, sizeof(struct response));
 	if(!responses) rc = UV_ENOMEM;
 	if(rc < 0) goto cleanup;

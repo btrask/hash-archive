@@ -1,6 +1,11 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#ifndef URL_H
+#define URL_H
+
+#include <errno.h>
+
 #define URL_SCHEME_MAX (31+1)
 #define URL_SCHEME_FMT "%31[^:]"
 #define URL_HOST_MAX (255+1)
@@ -11,6 +16,11 @@
 #define URL_PATH_FMT "%1023[^?#]"
 #define URL_QUERY_MAX (1023+1)
 #define URL_QUERY_FMT "%1023[^#]"
+
+enum {
+	URL_EINVAL = -EINVAL,
+	URL_EPARSE = -15801,
+};
 
 typedef struct {
 	char scheme[URL_SCHEME_MAX]; // Not including trailing colon
@@ -34,4 +44,6 @@ int url_normalize(char const *const URL, char *const out, size_t const max);
 // https://github.com/internetarchive/surt
 // http://crawler.archive.org/articles/user_manual/glossary.html#surt
 int url_normalize_surt(char const *const URL, char *const out, size_t const max);
+
+#endif
 

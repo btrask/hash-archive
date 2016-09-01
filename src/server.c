@@ -35,6 +35,29 @@ void queue_work_loop(void *ignored);
 int import_init(void);
 
 
+static int parse_error(HTTPConnectionRef const conn, strarg_t const query) {
+	static TemplateRef error = NULL;
+	if(!error) {
+		template_load("error.html", &error);
+	}
+	char *escaped = html_encode(query);
+	if(!escaped) return UV_ENOMEM;
+	TemplateStaticArg args[] = {
+		{"query", escaped},
+		{NULL, NULL},
+	};
+	HTTPConnectionWriteResponse(conn, 400, "Bad Request");
+	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
+	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
+	HTTPConnectionBeginBody(conn);
+	TemplateWriteHTTPChunk(error, TemplateStaticVar, &args, conn);
+	HTTPConnectionWriteChunkEnd(conn);
+	HTTPConnectionEnd(conn);
+	FREE(&escaped);
+	return 0;
+}
+
+
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	if(0 != uripathcmp(URI, "/", NULL)) return -1;
@@ -64,25 +87,26 @@ static int POST_lookup(HTTPConnectionRef const conn, HTTPMethod const method, st
 		goto cleanup;
 	}
 
-	rc = url_normalize(str, parsed, sizeof(parsed));
-	if(rc >= 0) {
-		snprintf(loc, sizeof(loc), "/history/%s", str);
-		HTTPConnectionSendRedirect(conn, 301, loc);
-		goto cleanup;
-	}
-
 	rc = hash_uri_normalize(str, parsed, sizeof(parsed));
 	if(rc >= 0) {
 		snprintf(loc, sizeof(loc), "/sources/%s", str);
 		HTTPConnectionSendRedirect(conn, 301, loc);
 		goto cleanup;
 	}
+	if(HASH_EPARSE != rc) goto cleanup;
 
-	HTTPConnectionSendStatus(conn, 400); // TODO
-	rc = 0;
+	rc = url_normalize(str, parsed, sizeof(parsed));
+	if(rc >= 0) {
+		snprintf(loc, sizeof(loc), "/history/%s", str);
+		HTTPConnectionSendRedirect(conn, 301, loc);
+		goto cleanup;
+	}
+	if(URL_EPARSE != rc) goto cleanup;
+
+	rc = parse_error(conn, str);
 
 cleanup:
-	free(str); str = NULL;
+	FREE(&str);
 	if(rc < 0) return hx_httperr(rc);
 	return 0;
 }
@@ -91,14 +115,18 @@ static int GET_history(HTTPConnectionRef const conn, HTTPMethod const method, st
 	char url[1023+1]; url[0] = '\0';
 	sscanf(URI, "/history/%1023s", url);
 	if('\0' == url[0]) return -1;
-	return hx_httperr(page_history(conn, url));
+	int rc = page_history(conn, url);
+	if(URL_EPARSE == rc) return hx_httperr(parse_error(conn, url));
+	return hx_httperr(rc);
 }
 static int GET_sources(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	char hash[1023+1]; hash[0] = '\0';
 	sscanf(URI, "/sources/%1023s", hash);
 	if('\0' == hash[0]) return -1;
-	return hx_httperr(page_sources(conn, hash));
+	int rc = page_sources(conn, hash);
+	if(HASH_EPARSE == rc) return hx_httperr(parse_error(conn, hash));
+	return hx_httperr(rc);
 }
 static int GET_critical(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;

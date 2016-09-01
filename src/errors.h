@@ -4,6 +4,7 @@
 #include <kvstore/db_base.h>
 #include <async/http/HTTP.h>
 #include "util/hash.h"
+#include "util/url.h"
 
 // Note: These errors are part of the database dump format!
 
@@ -58,6 +59,7 @@ static char const *hx_strerror(int const rc) {
 #undef XX
 	case HASH_EPANIC: return "Hash panic";
 	case HASH_EPARSE: return "Hash parse error";
+	case URL_EPARSE: return "URL parse error";
 	}
 	char const *x = db_strerror(rc);
 	if(x) return x;
@@ -68,6 +70,7 @@ static int hx_httperr(int const rc) {
 	switch(rc) {
 	case HASH_EPANIC: return 500;
 	case HASH_EPARSE: return 400;
+	case URL_EPARSE: return 400;
 	}
 	return HTTPError(rc);
 }
