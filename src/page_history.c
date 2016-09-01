@@ -142,22 +142,28 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		template_load("history-error.html", &error);
 		template_load("history-outdated.html", &outdated);
 	}
+
+	struct response *responses = NULL;
+	char *escaped = NULL;
+	char *link = NULL;
+	char *wayback_url = NULL;
+	char *google_url = NULL;
+	char *virustotal_url = NULL;
 	int rc = 0;
 
-	struct response *responses = calloc(RESPONSES_MAX, sizeof(struct response));
-	assert(responses); // TODO
+	responses = calloc(RESPONSES_MAX, sizeof(struct response));
+	if(!responses) rc = UV_ENOMEM;
+	if(rc < 0) goto cleanup;
 
-	char *escaped = html_encode(URL);
-	char *link = direct_link_html(LINK_WEB_URL, URL);
-	char *wayback_url = aasprintf("https://web.archive.org/web/*/%s", escaped);
-	char *google_url = aasprintf("https://webcache.googleusercontent.com/search?q=cache:%s", escaped);
-	char *virustotal_url = aasprintf("https://www.virustotal.com/en/url/%s", escaped);
+	escaped = html_encode(URL);
+	link = direct_link_html(LINK_WEB_URL, URL);
+	wayback_url = aasprintf("https://web.archive.org/web/*/%s", escaped);
+	google_url = aasprintf("https://webcache.googleusercontent.com/search?q=cache:%s", escaped);
+	virustotal_url = aasprintf("https://www.virustotal.com/en/url/%s", escaped);
 
-	ssize_t count = hx_get_history(URL, responses, RESPONSES_MAX);
-	if(count < 0) {
-		HTTPConnectionSendStatus(conn, HTTPError(count));
-		goto cleanup;
-	}
+	ssize_t const count = hx_get_history(URL, responses, RESPONSES_MAX);
+	if(count < 0) rc = count;
+	if(rc < 0) goto cleanup;
 
 	res_merge_common_hashes(responses, count);
 
@@ -180,7 +186,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		TemplateWriteHTTPChunk(outdated, TemplateStaticVar, &args, conn);
 		rc = queue_add(now, URL, ""); // TODO: Get client
 		if(rc < 0) {
-			alogf("queue error: %s\n", uv_strerror(rc));
+			alogf("queue error: %s\n", hx_strerror(rc));
 		}
 	}
 
@@ -204,6 +210,6 @@ cleanup:
 	FREE(&wayback_url);
 	FREE(&google_url);
 	FREE(&virustotal_url);
-	return 0;
+	return rc;
 }
 

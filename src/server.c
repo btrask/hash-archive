@@ -12,6 +12,7 @@
 #include "util/url.h"
 #include "page.h"
 #include "db.h"
+#include "errors.h"
 
 #define SERVER_RAW_ADDR NULL
 #define SERVER_RAW_PORT 8000
@@ -37,7 +38,7 @@ int import_init(void);
 static int GET_index(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	if(0 != uripathcmp(URI, "/", NULL)) return -1;
-	return HTTPError(page_index(conn));
+	return hx_httperr(page_index(conn));
 }
 static int POST_lookup(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_POST != method) return -1;
@@ -82,7 +83,7 @@ static int POST_lookup(HTTPConnectionRef const conn, HTTPMethod const method, st
 
 cleanup:
 	free(str); str = NULL;
-	if(rc < 0) return HTTPError(rc);
+	if(rc < 0) return hx_httperr(rc);
 	return 0;
 }
 static int GET_history(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
@@ -90,32 +91,32 @@ static int GET_history(HTTPConnectionRef const conn, HTTPMethod const method, st
 	char url[1023+1]; url[0] = '\0';
 	sscanf(URI, "/history/%1023s", url);
 	if('\0' == url[0]) return -1;
-	return HTTPError(page_history(conn, url));
+	return hx_httperr(page_history(conn, url));
 }
 static int GET_sources(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	char hash[1023+1]; hash[0] = '\0';
 	sscanf(URI, "/sources/%1023s", hash);
 	if('\0' == hash[0]) return -1;
-	return HTTPError(page_sources(conn, hash));
+	return hx_httperr(page_sources(conn, hash));
 }
 static int GET_critical(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	if(0 != uripathcmp(URI, "/critical/", NULL)) return -1;
-	return HTTPError(page_critical(conn));
+	return hx_httperr(page_critical(conn));
 }
 static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 
 	url_t obj[1];
 	int rc = url_parse(URI, obj);
-	if(rc < 0) return HTTPError(rc);
+	if(rc < 0) return hx_httperr(rc);
 
 	// TODO: Decode obj->path.
 
 	char path[4095+1];
 	rc = path_subpath_secure("./static/", obj->path, path, sizeof(path)); // TODO
-	if(rc < 0) return HTTPError(rc);
+	if(rc < 0) return hx_httperr(rc);
 
 	strarg_t const type = path_exttype(path_extname(path));
 	rc = HTTPConnectionSendFile(conn, path, type, -1);
@@ -130,7 +131,7 @@ static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, str
 		HTTPConnectionSendRedirect(conn, 301, location);
 		return 0;
 	}
-	if(rc < 0) return HTTPError(rc);
+	if(rc < 0) return hx_httperr(rc);
 	return 0;
 }
 
@@ -176,7 +177,7 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	if(rc > 0) HTTPConnectionSendStatus(conn, rc);
 
 cleanup:
-	if(rc < 0) HTTPConnectionSendStatus(conn, HTTPError(rc));
+	if(rc < 0) HTTPConnectionSendStatus(conn, hx_httperr(rc));
 //	char const *const username = NULL;
 //	HTTPConnectionLog(conn, URI, username, headers, SERVER_LOG_FILE);
 	HTTPHeadersFree(&headers);

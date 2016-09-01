@@ -109,7 +109,8 @@ int hash_uri_parse(char const *const URI, hash_uri_t *const out) {
 	rc = rc >= 0 ? rc : hash_uri_parse_ssb(URI, out);
 	rc = rc >= 0 ? rc : hash_uri_parse_magnet(URI, out);
 	rc = rc >= 0 ? rc : hash_uri_parse_prefix(URI, out);
-	rc = rc >= 0 ? rc : hash_uri_parse_multihash(URI, out);
+	// TODO
+//	rc = rc >= 0 ? rc : hash_uri_parse_multihash(URI, out);
 	return rc;
 }
 int hash_uri_parse_hash_uri(char const *const URI, hash_uri_t *const out) {

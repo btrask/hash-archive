@@ -1,6 +1,10 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#include <kvstore/db_base.h>
+#include <async/http/HTTP.h>
+#include "util/hash.h"
+
 // Note: These errors are part of the database dump format!
 
 #define HX_ERRORS(XX) \
@@ -52,9 +56,19 @@ static char const *hx_strerror(int const rc) {
 #define XX(val, name, str) case HX_ERR_##name: return (str);
 	HX_ERRORS(XX)
 #undef XX
+	case HASH_EPANIC: return "Hash panic";
+	case HASH_EPARSE: return "Hash parse error";
 	}
 	char const *x = db_strerror(rc);
 	if(x) return x;
 	return uv_strerror(rc);
+}
+static int hx_httperr(int const rc) {
+	if(rc >= 0) return 0; // Not expected
+	switch(rc) {
+	case HASH_EPANIC: return 500;
+	case HASH_EPARSE: return 400;
+	}
+	return HTTPError(rc);
 }
 

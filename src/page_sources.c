@@ -5,6 +5,7 @@
 #include "util/strext.h"
 #include "page.h"
 #include "db.h"
+#include "errors.h"
 #include "common.h"
 
 #define RESPONSES_MAX 30
@@ -60,39 +61,46 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 		template_load("sources-short.html", &short_hash);
 		template_load("sources-weak.html", &weak_hash);
 	}
+
+	struct response *responses = NULL;
+	char *escaped = NULL;
+	char *hash_link = NULL;
+	char *google_url = NULL;
+	char *ddg_url = NULL;
+	char *ipfs_url = NULL;
+	char *virustotal_url = NULL;
 	int rc = 0;
 
 	hash_uri_t obj[1];
 	rc = hash_uri_parse(URI, obj);
-	if(rc < 0) return rc;
+	if(rc < 0) goto cleanup;
 
-	struct response *responses = calloc(RESPONSES_MAX, sizeof(struct response));
-	assert(responses);
+	responses = calloc(RESPONSES_MAX, sizeof(struct response));
+	if(!responses) rc = UV_ENOMEM;
+	if(rc < 0) goto cleanup;
 
-	ssize_t count = hx_get_sources(obj, responses, RESPONSES_MAX);
-	if(count < 0) {
-		HTTPConnectionSendStatus(conn, HTTPError(count));
-		goto cleanup;
-	}
+	ssize_t const count = hx_get_sources(obj, responses, RESPONSES_MAX);
+	if(count < 0) rc = count;
+	if(rc < 0) goto cleanup;
 
 	res_merge_common_urls(responses, count);
 
 	// These don't need escaping because they are restricted character sets.
 	char hex[HASH_DIGEST_MAX*2+1];
 	rc = hex_encode(obj->buf, obj->len, hex, sizeof(hex));
-	assert(rc >= 0);
+	if(rc < 0) goto cleanup;
 	char multihash[URI_MAX];
 	hash_uri_t tmp[1] = { *obj };
 	tmp->type = LINK_MULTIHASH;
 	rc = hash_uri_format(tmp, multihash, sizeof(multihash));
-	assert(rc >= 0);
+	if(rc < 0) goto cleanup;
 
-	char *escaped = html_encode(URI);
-	char *hash_link = direct_link_html(obj->type, URI);
-	char *google_url = aasprintf("https://www.google.com/search?q=%s", hex);
-	char *ddg_url = aasprintf("https://duckduckgo.com/?q=%s", hex);
-	char *ipfs_url = aasprintf("https://ipfs.io/api/v0/block/get?arg=%s", multihash);
-	char *virustotal_url = aasprintf("https://www.virustotal.com/en/file/%s/analysis/", hex);
+	escaped = html_encode(URI);
+	hash_link = direct_link_html(obj->type, URI);
+	google_url = aasprintf("https://www.google.com/search?q=%s", hex);
+	ddg_url = aasprintf("https://duckduckgo.com/?q=%s", hex);
+	ipfs_url = aasprintf("https://ipfs.io/api/v0/block/get?arg=%s", multihash);
+	virustotal_url = aasprintf("https://www.virustotal.com/en/file/%s/analysis/", hex);
 
 	TemplateStaticArg args[] = {
 		{"query", escaped},
@@ -132,6 +140,6 @@ cleanup:
 	FREE(&ddg_url);
 	FREE(&ipfs_url);
 	FREE(&virustotal_url);
-	return 0;
+	return rc;
 }
 
