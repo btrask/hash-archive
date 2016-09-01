@@ -43,8 +43,12 @@ static int source_var(void *const actx, char const *const var, TemplateWriteFn c
 		free(url_safe); url_safe = NULL;
 		return rc;
 	}
+	if(0 == strcmp(var, "obsolete")) {
+		// TODO: This requires extra DB lookups...
+		return 0;
+	}
 
-	return 0;
+	return UV_ENOENT;
 }
 
 int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
@@ -78,8 +82,9 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	rc = hex_encode(obj->buf, obj->len, hex, sizeof(hex));
 	assert(rc >= 0);
 	char multihash[URI_MAX];
-	obj->type = LINK_MULTIHASH;
-	rc = hash_uri_format(obj, multihash, sizeof(multihash));
+	hash_uri_t tmp[1] = { *obj };
+	tmp->type = LINK_MULTIHASH;
+	rc = hash_uri_format(tmp, multihash, sizeof(multihash));
 	assert(rc >= 0);
 
 	char *escaped = html_encode(URI);
@@ -104,6 +109,8 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
 	HTTPConnectionBeginBody(conn);
 	TemplateWriteHTTPChunk(header, TemplateStaticVar, args, conn);
+
+	// TODO: Show weak and/or short hash warnings here!
 
 	// TODO: If there are any response hashes that don't exactly match
 	// the user's query (i.e. they're longer), then show "search suggestions".

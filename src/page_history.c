@@ -113,7 +113,7 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 	if(0 == strcmp(var, "prefix-list")) type = LINK_PREFIX;
 	if(0 == strcmp(var, "ssb-list")) type = LINK_SSB;
 	if(0 == strcmp(var, "magnet-list")) type = LINK_MAGNET;
-	if(LINK_NONE == type) return 0;
+	if(LINK_NONE == type) return UV_ENOENT;
 
 	for(size_t i = 0; i < numberof(algos); i++) {
 		size_t const algo = algos[i];

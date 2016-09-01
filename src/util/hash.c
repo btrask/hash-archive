@@ -251,7 +251,7 @@ int hash_uri_format(hash_uri_t const *const obj, char *const out, size_t const m
 		b64_encode(B64_URL, obj->buf, obj->len, b64, sizeof(b64));
 		return snprintf(out, max, "ni:///%s;%s", name, b64);
 	} case LINK_MULTIHASH: {
-		return snprintf(out, max, "test"); // TODO
+		return snprintf(out, max, "[TODO]"); // TODO
 	} case LINK_PREFIX: {
 		char b64[HASH_DIGEST_MAX*4/3+1+1];
 		b64_encode(B64_STD, obj->buf, obj->len, b64, sizeof(b64));

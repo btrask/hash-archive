@@ -167,6 +167,6 @@ int TemplateStaticVar(void *const actx, char const *const var, TemplateWriteFn c
 		if(!x) return 0;
 		return wr(wctx, uv_buf_init((char *)x, strlen(x)));
 	}
-	return 0;
+	return UV_ENOENT;
 }
 

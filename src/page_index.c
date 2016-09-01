@@ -68,6 +68,7 @@ static int template_var(void *const actx, char const *const var, TemplateWriteFn
 			free(x); x = NULL;
 			if(rc < 0) return rc;
 		}
+		return 0;
 	}
 
 	if(0 == strcmp(var, "critical-list")) {
@@ -78,9 +79,10 @@ static int template_var(void *const actx, char const *const var, TemplateWriteFn
 			free(x); x = NULL;
 			if(rc < 0) return rc;
 		}
+		return 0;
 	}
 
-	return 0;
+	return UV_ENOENT;
 }
 
 int page_index(HTTPConnectionRef const conn) {
