@@ -31,7 +31,7 @@ cleanup:
 	HTTPConnectionFree(&conn);
 	return rc;
 }
-static int url_fetch_internal(struct response *const res, strarg_t const client) {
+static int url_fetch_internal(char *const URL, strarg_t const client, struct response *const res) {
 	assert(res);
 
 	HTTPConnectionRef conn = NULL;
@@ -41,7 +41,7 @@ static int url_fetch_internal(struct response *const res, strarg_t const client)
 	char const *type = NULL;
 	int rc = 0;
 
-	rc = rc < 0 ? rc : send_get(res->url, client, &conn);
+	rc = rc < 0 ? rc : send_get(URL, client, &conn);
 	rc = rc < 0 ? rc : HTTPConnectionReadResponseStatus(conn, &res->status);
 	rc = rc < 0 ? rc : HTTPHeadersCreateFromConnection(conn, &headers);
 	if(rc < 0) goto cleanup;
@@ -49,7 +49,7 @@ static int url_fetch_internal(struct response *const res, strarg_t const client)
 	if(res->status >= 300 && res->status < 400) {
 		char const *const loc = HTTPHeadersGet(headers, "Location");
 		if(loc) {
-			strlcpy(res->url, loc, sizeof(res->url));
+			strlcpy(URL, loc, URI_MAX);
 			rc = HX_ERR_REDIRECT;
 			goto cleanup;
 		}
@@ -100,8 +100,10 @@ int url_fetch(strarg_t const URL, strarg_t const client, struct response *const 
 		out->digests[i].len = 0;
 	}
 
+	char tmp[URI_MAX];
+	strlcpy(tmp, URL, URI_MAX);
 	for(size_t i = 0; i < REDIRECT_MAX; i++) {
-		int rc = url_fetch_internal(out, client);
+		int rc = url_fetch_internal(tmp, client, out);
 		if(rc < 0) return rc;
 		if(HX_ERR_REDIRECT != out->status) return rc;
 	}
