@@ -8,7 +8,7 @@ This is the C rewrite of the [original Hash Archive](https://github.com/btrask/h
 Building
 --------
 
-Debian/Ubuntu dependencies: `sudo apt-get install build-essentials automake autoconf libtool pkg-config`
+Debian/Ubuntu dependencies: `sudo apt-get install build-essentials automake autoconf libtool pkg-config cmake`
 
 1. `git submodule init && git submodule update`
 2. `./configure`
