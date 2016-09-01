@@ -43,11 +43,11 @@ static bool res_eq(struct response const *const a, struct response const *const 
 	// Don't merge responses that aren't "OK".
 	if(200 != a->status || 200 != b->status) return false;
 
-	// It's important that types match.
-	if(0 != strcmp(a->type, b->type)) return false;
+	// We currently don't display types in our URI, so comparing them is confusing.
+//	if(0 != strcmp(a->type, b->type)) return false;
 
-	// Why not?
-	if(a->length != b->length) return false;
+	// If lengths are unknown (UINT64_MAX) this fails.
+//	if(a->length != b->length) return false;
 
 	// We only compare the prefix. For empty hashes this is zero which is good.
 	size_t match = 0;
