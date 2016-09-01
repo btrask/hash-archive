@@ -336,8 +336,8 @@ JavaScript on CDNs
 
 [Transmission](https://www.transmissionbt.com/)
 
-- https://download.transmissionbt.com/files/Transmission-2.92.dmg
-- https://download.transmissionbt.com/files/transmission-2.92.tar.xz
+- https://github.com/transmission/transmission-releases/raw/master/Transmission-2.92.dmg
+- https://github.com/transmission/transmission-releases/raw/master/transmission-2.92.tar.xz
 
 [7-zip](http://www.7-zip.org/)
 
