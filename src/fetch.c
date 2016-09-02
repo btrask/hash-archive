@@ -18,7 +18,18 @@ static int send_get(strarg_t const URL, strarg_t const client, HTTPConnectionRef
 	int rc = 0;
 	rc = url_parse(URL, obj);
 	if(rc < 0) goto cleanup;
-	rc = rc < 0 ? rc : HTTPConnectionCreateOutgoingSecure(obj->host, 0, NULL, &conn);
+
+	bool secure;
+	if(0 == strcmp(obj->scheme, "http")) {
+		secure = false;
+	} else if(0 == strcmp(obj->scheme, "https")) {
+		secure = true;
+	} else {
+		rc = UV_EPROTONOSUPPORT;
+		goto cleanup;
+	}
+
+	rc = rc < 0 ? rc : HTTPConnectionCreateOutgoing(obj->host, 0, secure, &conn);
 	rc = rc < 0 ? rc : HTTPConnectionWriteRequest(conn, HTTP_GET, obj->path, obj->host);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "User-Agent", USER_AGENT);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "X-Forwarded-For", client); // TODO

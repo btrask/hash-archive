@@ -14,20 +14,12 @@
 #define RESPONSE_BATCH_SIZE 50
 
 static int read_len(uv_stream_t *const stream, unsigned char *const out, size_t const len) {
-	// TODO: fix async_read?
 	assert(out);
 	if(!len) return 0;
-	uv_buf_t buf[1];
-	int rc;
-	do rc = async_read(stream, len, buf);
-	while(UV_EAGAIN == rc); // WTF?
-	if(rc < 0) return rc;
-	if(buf->len < len) rc = UV_EOF;
-	if(rc < 0) goto cleanup;
-	memcpy(out, buf->base, len);
-cleanup:
-	free(buf->base); buf->base = NULL;
-	return rc;
+	ssize_t x = async_read(stream, out, len);
+	if(x < 0) return x;
+	if(x < len) return UV_EOF;
+	return 0;
 }
 static int read_uint16(uv_stream_t *const stream, uint16_t *const out) {
 	assert(out);
