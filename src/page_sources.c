@@ -33,7 +33,9 @@ static int source_var(void *const actx, char const *const var, TemplateWriteFn c
 	struct response const *const res = actx;
 
 	if(0 == strcmp(var, "date")) {
-		char *date = date_html("Last seen ", res->time);
+		char *date = res->flags & HX_RES_LATEST ?
+			date_html("Active as of ", res->time) :
+			date_html("Obsolete; last seen ", res->time);
 		int rc = wr(wctx, uv_buf_init(date, strlen(date)));
 		free(date); date = NULL;
 		return rc;
@@ -45,8 +47,8 @@ static int source_var(void *const actx, char const *const var, TemplateWriteFn c
 		return rc;
 	}
 	if(0 == strcmp(var, "obsolete")) {
-		// TODO: This requires extra DB lookups...
-		return 0;
+		if(res->flags & HX_RES_LATEST) return 0;
+		return wr(wctx, uv_buf_init((char *)STR_LEN("obsolete")));
 	}
 
 	return UV_ENOENT;

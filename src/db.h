@@ -9,17 +9,26 @@
 
 // TODO
 #define URI_MAX (1023+1)
+#define TYPE_MAX (255+1)
 typedef char const *strarg_t;
+
+enum {
+	// This is the latest response for this URL.
+	// If there is a later response and their hashes differ,
+	// then the current response is obsolete.
+	HX_RES_LATEST = 1 << 0,
+};
 
 struct response {
 	uint64_t time;
 	char url[URI_MAX];
 	int status;
-	char type[255+1];
+	char type[TYPE_MAX];
 	uint64_t length;
 	hash_digest_t digests[HASH_ALGO_MAX];
 	struct response *next;
 	struct response *prev;
+	unsigned int flags;
 };
 
 int hx_db_load(void);
@@ -31,6 +40,7 @@ int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_
 ssize_t hx_get_recent(struct response *const out, size_t const max);
 ssize_t hx_get_history(strarg_t const URL, struct response *const out, size_t const max);
 ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, size_t const max);
+int hx_get_latest(strarg_t const URL, DB_txn *const txn, uint64_t *const time, uint64_t *const id);
 
 enum {
 	// 0-19 reserved.

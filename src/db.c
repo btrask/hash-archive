@@ -4,6 +4,15 @@
 #include <async/async.h>
 #include "util/url.h"
 #include "db.h"
+#include "errors.h"
+
+static int timeidcmp(uint64_t const t1, uint64_t const i1, uint64_t const t2, uint64_t const i2) {
+	if(t1 > t2) return +1;
+	if(t1 < t2) return -1;
+	if(i1 > i2) return +1;
+	if(i1 < i2) return -1;
+	return 0;
+}
 
 static DB_env *shared_db = NULL;
 
@@ -210,12 +219,20 @@ ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, 
 		if(rc < 0) goto cleanup;
 
 		out[i].time = time;
+		out[i].flags = 0;
 		HXTimeIDToResponseValUnpack(res_val, txn, &out[i]);
 
 		// Our index is truncated so it can return spurrious matches.
 		// Ensure the complete prefix matches.
 		if(obj->len > out[i].digests[obj->algo].len) continue;
 		if(0 != memcmp(out[i].digests[obj->algo].buf, obj->buf, obj->len)) continue;
+
+		uint64_t ltime, lid;
+		rc = hx_get_latest(out[i].url, txn, &ltime, &lid);
+		if(rc < 0) goto cleanup;
+		int x = timeidcmp(ltime, lid, time, id);
+		assert(x >= 0);
+		if(0 == x) out[i].flags |= HX_RES_LATEST;
 
 		i++;
 	}
@@ -227,5 +244,25 @@ cleanup:
 	hx_db_close(&db);
 	if(rc < 0) return rc;
 	return i;
+}
+int hx_get_latest(strarg_t const URL, DB_txn *const txn, uint64_t *const time, uint64_t *const id) {
+	assert(time);
+	assert(id);
+	DB_cursor *cursor = NULL;
+	char surt[URI_MAX];
+	int rc = url_normalize_surt(URL, surt, sizeof(surt));
+	if(rc < 0) goto cleanup;
+	rc = db_txn_cursor(txn, &cursor);
+	if(rc < 0) goto cleanup;
+	DB_range urls_range[1];
+	DB_val latest_key[1];
+	HXURLSurtAndTimeIDRange1(urls_range, txn, surt);
+	rc = db_cursor_firstr(cursor, urls_range, latest_key, NULL, -1);
+	if(rc < 0) goto cleanup;
+	strarg_t x;
+	HXURLSurtAndTimeIDKeyUnpack(latest_key, txn, &x, time, id);
+cleanup:
+	cursor = NULL;
+	return rc;
 }
 
