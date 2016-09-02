@@ -133,6 +133,20 @@ static int GET_critical(HTTPConnectionRef const conn, HTTPMethod const method, s
 	if(0 != uripathcmp(URI, "/critical/", NULL)) return -1;
 	return hx_httperr(page_critical(conn));
 }
+
+static int GET_api_enqueue(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
+	strarg_t qs = NULL;
+	if(0 != uripathcmp(URI, "/api/enqueue/", &qs)) return -1;
+	return 501; // TODO
+}
+static int GET_api_sources(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
+	strarg_t qs = NULL;
+	if(0 != uripathcmp(URI, "/api/sources/", &qs)) return -1;
+	return 501; // TODO
+}
+
 static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 
