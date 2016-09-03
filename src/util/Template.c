@@ -124,8 +124,10 @@ int TemplateWrite(TemplateRef const t, TemplateVarFn const var, void *const actx
 	for(size_t i = 0; i < t->count; i++) {
 		TemplateStep const *const s = &t->steps[i];
 		rc = wr(wctx, uv_buf_init((char *)s->str, s->len));
+		if(UV_EPIPE == rc) rc = 0;
 		if(rc < 0) abort();
 		rc = s->var && var ? var(actx, s->var, wr, wctx) : 0;
+		if(UV_EPIPE == rc) rc = 0;
 		if(rc < 0) abort();
 		// Security critical!
 		// If we stop early but the caller ignores our error,
