@@ -13,11 +13,7 @@
 #include "page.h"
 #include "db.h"
 #include "errors.h"
-
-#define SERVER_RAW_ADDR NULL
-#define SERVER_RAW_PORT 8000
-
-#define QUEUE_WORKERS 16
+#include "config.h"
 
 static HTTPServerRef server_raw = NULL;
 static HTTPServerRef server_tls = NULL;

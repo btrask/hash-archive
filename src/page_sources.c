@@ -7,8 +7,7 @@
 #include "db.h"
 #include "errors.h"
 #include "common.h"
-
-#define RESPONSES_MAX 30
+#include "config.h"
 
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
@@ -77,11 +76,11 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	rc = hash_uri_parse(URI, obj);
 	if(rc < 0) goto cleanup;
 
-	responses = calloc(RESPONSES_MAX, sizeof(struct response));
+	responses = calloc(SOURCES_MAX, sizeof(struct response));
 	if(!responses) rc = UV_ENOMEM;
 	if(rc < 0) goto cleanup;
 
-	ssize_t const count = hx_get_sources(obj, responses, RESPONSES_MAX);
+	ssize_t const count = hx_get_sources(obj, responses, SOURCES_MAX);
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
 
@@ -92,9 +91,7 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	rc = hex_encode(obj->buf, obj->len, hex, sizeof(hex));
 	if(rc < 0) goto cleanup;
 	char multihash[URI_MAX];
-	hash_uri_t tmp[1] = { *obj };
-	tmp->type = LINK_MULTIHASH;
-	rc = hash_uri_format(tmp, multihash, sizeof(multihash));
+	rc = hash_uri_variant(obj, LINK_MULTIHASH, multihash, sizeof(multihash));
 	if(rc < 0) goto cleanup;
 
 	escaped = html_encode(URI);

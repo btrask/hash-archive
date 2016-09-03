@@ -5,27 +5,15 @@
 #include <string.h>
 #include "db.h"
 #include "page.h"
+#include "config.h"
 
 static TemplateRef index = NULL;
-
-static strarg_t const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
-static strarg_t const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
 
 static char example_named_info[URI_MAX] = "";
 static char example_prefix[URI_MAX] = "";
 static char example_multihash[URI_MAX] = "";
 static char example_ssb[URI_MAX] = "";
 static char example_magnet[URI_MAX] = "";
-
-static char const *const critical[] = {
-	"https://ftp.heanet.ie/mirrors/linuxmint.com/stable/18/linuxmint-18-cinnamon-64bit.iso",
-	"https://code.jquery.com/jquery-2.2.3.min.js",
-	"https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js",
-	"https://ftp-master.debian.org/keys/archive-key-8.asc",
-	"http://heanet.dl.sourceforge.net/project/keepass/KeePass%202.x/2.32/KeePass-2.32.zip",
-	"http://openwall.com/signatures/openwall-signatures.asc",
-	"http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-23.noarch.rpm",
-};
 
 static int write_link(TemplateWriteFn const wr, void *const wctx, hash_uri_type const type, strarg_t const URI_unsafe) {
 	char *x = link_html(type, URI_unsafe);

@@ -50,8 +50,10 @@ enum {
 	HXURLSurtAndTimeID = 21,
 
 	HXTimeIDQueuedURLAndClient = 30,
+	HXQueuedURLSurtAndTimeID = 31,
 
 	HXHashAndTimeID = 50, // Note: hashes truncated, not necessarily unique!
+	// Add HASH_ALGO_XX to get per-algo table.
 };
 
 #define HX_HASH_INDEX_LEN 8
@@ -138,6 +140,27 @@ static void HXTimeIDQueuedURLAndClientKeyUnpack(DB_val *const val, DB_txn *const
 	*id = db_read_uint64(val);
 	*URL = db_read_string(val, txn);
 	*client = db_read_string(val, txn);
+}
+
+#define HXQueuedURLSurtAndTimeIDKeyPack(val, txn, url, time, id) \
+	DB_VAL_STORAGE(val, DB_VARINT_MAX*3 + DB_INLINE_MAX); \
+	db_bind_uint64((val), HXQueuedURLSurtAndTimeID); \
+	db_bind_string((val), (url), (txn)); \
+	db_bind_uint64((val), (time)); \
+	db_bind_uint64((val), (id)); \
+	DB_VAL_STORAGE_VERIFY(val);
+#define HXQueuedURLSurtAndTimeIDRange1(range, txn, url) \
+	DB_RANGE_STORAGE(range, DB_VARINT_MAX+DB_INLINE_MAX); \
+	db_bind_uint64((range)->min, HXQueuedURLSurtAndTimeID); \
+	db_bind_string((range)->min, (url), (txn)); \
+	db_range_genmax((range)); \
+	DB_RANGE_STORAGE_VERIFY(range);
+static void HXQueuedURLSurtAndTimeIDKeyUnpack(DB_val *const val, DB_txn *const txn, strarg_t *const url, uint64_t *const time, uint64_t *const id) {
+	uint64_t const table = db_read_uint64(val);
+	assert(HXQueuedURLSurtAndTimeID == table);
+	*url = db_read_string(val, txn);
+	*time = db_read_uint64(val);
+	*id = db_read_uint64(val);
 }
 
 #define HXAlgoHashAndTimeIDKeyPack(val, algo, hash, time, id) \
