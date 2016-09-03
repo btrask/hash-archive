@@ -22,6 +22,15 @@
 })
 #define STR_LEN(x) (x), (sizeof(x)-1)
 
+static int const multihash_algo_encode[HASH_ALGO_MAX] = {
+	[HASH_ALGO_SHA1] = 0x11,
+	[HASH_ALGO_SHA256] = 0x12,
+	[HASH_ALGO_SHA512] = 0x13,
+//	[HASH_ALGO_SHA3] = 0x14,
+//	[HASH_ALGO_BLAKE2B] = 0x40,
+//	[HASH_ALGO_BLAKE2S] = 0x41,
+};
+
 static int strnncasecmp(char const *const a, size_t const alen, char const *const b, size_t const blen) {
 	if(alen != blen) return -1;
 	return strncasecmp(a, b, alen);
@@ -63,6 +72,7 @@ static int regcomp_err(regex_t *const preg, char const *const regex, int const c
 	assert(0);
 	return HASH_EPANIC;
 }
+
 // TODO: Copy and paste...
 static int hex_decode_copy(char const *const str, size_t const len, unsigned char **const outbuf, size_t *const outlen) {
 	assert(outbuf);
@@ -70,8 +80,8 @@ static int hex_decode_copy(char const *const str, size_t const len, unsigned cha
 	unsigned char *buf = NULL;
 	ssize_t actual = 0;
 	int rc = 0;
-	size_t const max = (str ? strnlen(str, len) : 0) * 2;
-	buf = malloc(MAX(max, 1));
+	size_t const max = (str ? strnlen(str, len) : 0) * 4/8 + 1;
+	buf = malloc(max+1);
 	if(!buf) rc = HASH_ENOMEM;
 	if(rc < 0) goto cleanup;
 	actual = hex_decode(str, len, buf, max);
@@ -89,8 +99,8 @@ static int b64_decode_copy(char const *const str, size_t const len, unsigned cha
 	unsigned char *buf = NULL;
 	ssize_t actual = 0;
 	int rc = 0;
-	size_t const max = (str ? strnlen(str, len) : 0) * 4/3;
-	buf = malloc(MAX(max, 1));
+	size_t const max = (str ? strnlen(str, len) : 0) * 6/8 + 1;
+	buf = malloc(max+1);
 	if(!buf) rc = HASH_ENOMEM;
 	if(rc < 0) goto cleanup;
 	actual = b64_decode(str, len, buf, max);
@@ -102,15 +112,16 @@ cleanup:
 	free(buf); buf = NULL;
 	return rc;
 }
+
 int hash_uri_parse(char const *const URI, hash_uri_t *const out) {
 	int rc = HASH_EPARSE;
+	// Note: These should be ordered from most specific to most generic.
 	rc = rc >= 0 ? rc : hash_uri_parse_hash_uri(URI, out);
 	rc = rc >= 0 ? rc : hash_uri_parse_named_info(URI, out);
 	rc = rc >= 0 ? rc : hash_uri_parse_ssb(URI, out);
 	rc = rc >= 0 ? rc : hash_uri_parse_magnet(URI, out);
 	rc = rc >= 0 ? rc : hash_uri_parse_prefix(URI, out);
-	// TODO
-//	rc = rc >= 0 ? rc : hash_uri_parse_multihash(URI, out);
+	rc = rc >= 0 ? rc : hash_uri_parse_multihash(URI, out);
 	return rc;
 }
 int hash_uri_parse_hash_uri(char const *const URI, hash_uri_t *const out) {
@@ -176,7 +187,7 @@ int hash_uri_parse_named_info(char const *const URI, hash_uri_t *const out) {
 int hash_uri_parse_multihash(char const *const URI, hash_uri_t *const out) {
 	assert(out);
 	if(!URI) return HASH_EINVAL;
-/*	static regex_t re[1];
+	static regex_t re[1];
 	static bool initialized = false;
 	int rc = 0;
 	if(!initialized) {
@@ -184,14 +195,28 @@ int hash_uri_parse_multihash(char const *const URI, hash_uri_t *const out) {
 		if(rc < 0) return rc;
 		initialized = true;
 	}
-	regmatch_t m[3];
+	regmatch_t m[1];
 	rc = regexec(re, URI, numberof(m), m, 0);
 	if(0 != rc) return HASH_EPARSE;
 	out->type = LINK_MULTIHASH;
-	out->algo = hash_algo_parse(URI+m[1].rm_so, match_len(&m[1]));
-//	rc = b64_decode_copy(URI+m[2].rm_so, match_len(&m[2]), &out->buf, &out->len);
-	if(rc < 0) return rc;*/
-	return -1;
+	unsigned char tmp[2+HASH_DIGEST_MAX];
+	ssize_t len = b58_decode(URI+m[0].rm_so, match_len(&m[0]), tmp, sizeof(tmp));
+	if(len < 0) return len;
+	if(len < 2) return HASH_EPANIC;
+	switch(tmp[0]) {
+		case 0x11: out->algo = HASH_ALGO_SHA1; break;
+		case 0x12: out->algo = HASH_ALGO_SHA256; break;
+		case 0x13: out->algo = HASH_ALGO_SHA512; break;
+//		case 0x14: out->algo = HASH_ALGO_SHA3; break;
+//		case 0x40: out->algo = HASH_ALGO_BLAKE2B; break;
+//		case 0x41: out->algo = HASH_ALGO_BLAKE2S; break;
+		default: return HASH_EPARSE;
+	}
+	out->buf = malloc(len-2+1);
+	if(!out->buf) return HASH_ENOMEM;
+	memcpy(out->buf, tmp+2, len-2);
+	out->len = len-2;
+	return 0;
 }
 int hash_uri_parse_ssb(char const *const URI, hash_uri_t *const out) {
 	assert(out);
@@ -244,28 +269,35 @@ int hash_uri_format(hash_uri_t const *const obj, char *const out, size_t const m
 	if(!name) return HASH_EINVAL;
 	switch(obj->type) {
 	case LINK_HASH_URI: {
-		char hex[HASH_DIGEST_MAX*2+1];
+		char hex[HASH_DIGEST_MAX*8/4+1];
 		hex_encode(obj->buf, obj->len, hex, sizeof(hex));
 		return snprintf(out, max, "hash://%s/%s", name, hex);
 	} case LINK_NAMED_INFO: {
-		char b64[HASH_DIGEST_MAX*4/3+1+1] = "test";
+		char b64[HASH_DIGEST_MAX*8/6+1+1];
 		b64_encode(B64_URL, obj->buf, obj->len, b64, sizeof(b64));
 		return snprintf(out, max, "ni:///%s;%s", name, b64);
 	} case LINK_MULTIHASH: {
-		return snprintf(out, max, "[TODO]"); // TODO
+		unsigned char tmp[2+HASH_DIGEST_MAX];
+		tmp[0] = multihash_algo_encode[obj->algo];
+		if(0 == tmp[0]) return HASH_ENOTSUP;
+		tmp[1] = hash_algo_digest_len(obj->algo);
+		memcpy(tmp+2, obj->buf, obj->len);
+		char b58[sizeof(tmp)*8/5+1+1];
+		b58_encode(tmp, 2+obj->len, b58, sizeof(b58));
+		return snprintf(out, max, "%s", b58);
 	} case LINK_PREFIX: {
-		char b64[HASH_DIGEST_MAX*4/3+1+1];
+		char b64[HASH_DIGEST_MAX*8/6+1+1];
 		b64_encode(B64_STD, obj->buf, obj->len, b64, sizeof(b64));
 		return snprintf(out, max, "%s-%s", name, b64);
 	} case LINK_SSB: {
-		char b64[HASH_DIGEST_MAX*4/3+1+1] = "test";
+		char b64[HASH_DIGEST_MAX*8/6+1+1];
 		b64_encode(B64_STD, obj->buf, obj->len, b64, sizeof(b64));
 		return snprintf(out, max, "&%s.%s", b64, name);
 	} case LINK_MAGNET: {
-		char hex[HASH_DIGEST_MAX*2+1];
-		hex_encode(obj->buf, obj->len, hex, sizeof(hex)); // TODO: double-check
+		char hex[HASH_DIGEST_MAX*8/4+1];
+		hex_encode(obj->buf, obj->len, hex, sizeof(hex));
 		return snprintf(out, max, "magnet:?xt=urn:%s:%s", name, hex);
-	} default: return HASH_EINVAL;
+	} default: return HASH_ENOTSUP;
 	}
 }
 int hash_uri_normalize(char const *const URI, char *const out, size_t const max) {
@@ -412,5 +444,23 @@ ssize_t b64_decode(char const *const str, size_t const len, unsigned char *const
 	}
 	assert(0);
 	return HASH_EPANIC;
+}
+
+#include <libbase58.h>
+
+size_t b58_encode(unsigned char const *const buf, size_t const len, char *const out, size_t const max) {
+	size_t x = max;
+	bool success = b58enc(out, &x, buf, len);
+	assert(success);
+	return x;
+}
+ssize_t b58_decode(char const *const str, size_t const len, unsigned char *const out, size_t const max) {
+	// TODO: This library has funny handling of leading zeros.
+	// This fraction happens to work for full length SHA-256 hashes,
+	// but is probably broken in most other circumstances.
+	size_t x = MIN(max, len*6/8);
+	bool success = b58tobin(out, &x, str, len);
+	if(!success) return HASH_EPARSE;
+	return x;
 }
 

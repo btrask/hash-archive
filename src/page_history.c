@@ -124,7 +124,9 @@ static int hist_var(void *const actx, char const *const var, TemplateWriteFn con
 		}};
 		if(obj->len <= 0) continue;
 		char *x = item_html_obj(obj);
-		if(!x) return UV_ENOMEM;
+		if(!x) continue; // TODO: Clarify error handling.
+		// Probably HASH_ENOTSUP
+//		if(!x) return UV_ENOMEM;
 		int rc = wr(wctx, uv_buf_init(x, strlen(x)));
 		free(x); x = NULL;
 		if(rc < 0) return rc;

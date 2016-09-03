@@ -99,6 +99,9 @@ LIBS += -lstdc++
 STATIC_LIBS += $(DEPS_DIR)/cmark/build/src/libcmark.a
 CFLAGS += -I$(DEPS_DIR)/cmark/src -I$(DEPS_DIR)/cmark/build/src
 
+STATIC_LIBS += $(DEPS_DIR)/libbase58/.libs/libbase58.a
+CFLAGS += -I$(DEPS_DIR)/libbase58
+
 
 .PHONY: all
 all: $(BUILD_DIR)/hash-archive
@@ -107,7 +110,7 @@ $(BUILD_DIR)/hash-archive: $(OBJECTS) $(STATIC_LIBS)
 	@- mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(WARNINGS) $(OBJECTS) $(STATIC_LIBS) $(LIBS) -o $@
 
-$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c | cmark libasync libkvstore
+$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c | cmark libbase58 libasync libkvstore
 	@- mkdir -p $(dir $@)
 	@- mkdir -p $(dir $(BUILD_DIR)/h/src/$*.d)
 	$(CC) -c $(CFLAGS) $(WARNINGS) -MMD -MP -MF $(BUILD_DIR)/h/src/$*.d -o $@ $<
@@ -131,6 +134,12 @@ $(DEPS_DIR)/cmark/build/src/libcmark.a: | cmark
 .PHONY: cmark
 cmark:
 	$(MAKE) -C $(DEPS_DIR)/cmark --no-print-directory
+
+$(DEPS_DIR)/libbase58/libbase58.h: | libbase58
+$(DEPS_DIR)/libbase58/.libs/libbase58.a: | libbase58
+.PHONY: libbase58
+libbase58:
+	$(MAKE) -C $(DEPS_DIR)/libbase58 --no-print-directory
 
 # TODO: Have libasync bundle these directly.
 $(DEPS_DIR)/libasync/build/libasync.a: | libasync

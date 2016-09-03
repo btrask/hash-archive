@@ -81,6 +81,9 @@ typedef enum {
 size_t b64_encode(b64_type const type, unsigned char const *const buf, size_t const len, char *const out, size_t const max);
 ssize_t b64_decode(char const *const str, size_t const len, unsigned char *const out, size_t const max);
 
+size_t b58_encode(unsigned char const *const buf, size_t const len, char *const out, size_t const max);
+ssize_t b58_decode(char const *const str, size_t const len, unsigned char *const out, size_t const max);
+
 // hasher.c
 enum {
 	HASHER_ALGOS_ALL = UINT64_MAX,
@@ -100,6 +103,7 @@ enum {
 	HASH_ENOMEM = -ENOMEM,
 	HASH_EPANIC = -15701,
 	HASH_EPARSE = -15702,
+	HASH_ENOTSUP = -15703,
 };
 static char const *hash_strerror(int const rc) {
 	switch(rc) {
@@ -107,6 +111,7 @@ static char const *hash_strerror(int const rc) {
 	case HASH_ENOMEM: return "No memory";
 	case HASH_EPANIC: return "Hash panic";
 	case HASH_EPARSE: return "Hash parse error";
+	case HASH_ENOTSUP: return "Hash algorithm or option not supported";
 	default: return NULL;
 	}
 }
