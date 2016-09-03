@@ -126,7 +126,17 @@ ssize_t hx_get_recent(struct response *const out, size_t const max) {
 		HXTimeIDToResponseKeyUnpack(key, &time, &id);
 		out[i].time = time;
 		HXTimeIDToResponseValUnpack(val, txn, &out[i]);
+
+		// Don't list failed responses.
 		if(200 != out[i].status) continue;
+
+		// Skip duplicate URLs.
+		size_t j = 0;
+		for(; j < i; j++) {
+			if(0 == strcmp(out[j].url, out[i].url)) break;
+		}
+		if(j < i) continue;
+
 		i++;
 	}
 	rc = 0;
