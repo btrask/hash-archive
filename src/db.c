@@ -5,6 +5,7 @@
 #include "util/url.h"
 #include "db.h"
 #include "errors.h"
+#include "config.h"
 
 static int timeidcmp(uint64_t const t1, uint64_t const i1, uint64_t const t2, uint64_t const i2) {
 	if(t1 > t2) return +1;
@@ -24,7 +25,7 @@ int hx_db_load(void) {
 	if(rc < 0) goto cleanup;
 	rc = db_env_set_mapsize(db, 1024ull*1024*1024*64); // 64GB
 	if(rc < 0) goto cleanup;
-	rc = db_env_open(db, "./test.db", 0, 0600);
+	rc = db_env_open(db, CONFIG_DB_PATH, 0, 0600);
 	if(rc < 0) goto cleanup;
 	shared_db = db; db = NULL;
 cleanup:

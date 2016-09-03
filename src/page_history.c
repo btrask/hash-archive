@@ -156,7 +156,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 		0 != strcasecmp(obj->scheme, "https")) rc = URL_EPARSE;
 	if(rc < 0) goto cleanup;
 
-	responses = calloc(HISTORY_MAX, sizeof(struct response));
+	responses = calloc(CONFIG_HISTORY_MAX, sizeof(struct response));
 	if(!responses) rc = UV_ENOMEM;
 	if(rc < 0) goto cleanup;
 
@@ -166,7 +166,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	google_url = aasprintf("https://webcache.googleusercontent.com/search?q=cache:%s", escaped);
 	virustotal_url = aasprintf("https://www.virustotal.com/en/url/%s", escaped);
 
-	ssize_t const count = hx_get_history(URL, responses, HISTORY_MAX);
+	ssize_t const count = hx_get_history(URL, responses, CONFIG_HISTORY_MAX);
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
 
@@ -189,13 +189,13 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	// Note: This check is just an optimization.
 	// queue_add() does its own crawl delay checks.
 	uint64_t const now = time(NULL);
-//	if(count < 1 || responses[0].time+CRAWL_DELAY_SECONDS < now) {
+	if(count < 1 || responses[0].time+CONFIG_CRAWL_DELAY_SECONDS < now) {
 		TemplateWriteHTTPChunk(outdated, TemplateStaticVar, &args, conn);
 		rc = queue_add(now, URL, ""); // TODO: Get client
 		if(rc < 0 && DB_KEYEXIST != rc) {
 			alogf("queue error: %s\n", hx_strerror(rc));
 		}
-//	}
+	}
 
 	for(size_t i = 0; i < count; i++) {
 		if(responses[i].prev) continue; // Skip duplicates

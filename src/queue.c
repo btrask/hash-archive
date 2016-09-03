@@ -140,7 +140,7 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 		uint64_t ltime, lid;
 		HXURLSurtAndTimeIDKeyUnpack(chk_key, txn, &x, &ltime, &lid);
 		assert(0 == strcmp(x, surt));
-		rc = ltime+CRAWL_DELAY_SECONDS < time ?
+		rc = ltime+CONFIG_CRAWL_DELAY_SECONDS < time ?
 			DB_NOTFOUND : DB_KEYEXIST;
 	}
 	if(DB_NOTFOUND != rc) goto cleanup;

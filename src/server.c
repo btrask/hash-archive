@@ -199,8 +199,8 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	rc = host_parse(host, obj);
 	// TODO: Verify Host header to prevent DNS rebinding.
 
-/*	if(SERVER_PORT_TLS && server != server_tls) {
-		rc = HTTPConnectionSendSecureRedirect(conn, obj->domain, SERVER_PORT_TLS, URI);
+/*	if(CONFIG_SERVER_PORT_TLS && server != server_tls) {
+		rc = HTTPConnectionSendSecureRedirect(conn, obj->domain, CONFIG_SERVER_PORT_TLS, URI);
 		goto cleanup;
 	}*/
 
@@ -229,7 +229,7 @@ static void init(void *ignore) {
 	if(rc < 0) goto cleanup;
 
 	queue_init();
-	for(size_t i = 0; i < QUEUE_WORKERS; i++) {
+	for(size_t i = 0; i < CONFIG_QUEUE_WORKERS; i++) {
 		async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
 	}
 
@@ -238,9 +238,9 @@ static void init(void *ignore) {
 
 	rc = HTTPServerCreate(listener, NULL, &server);
 	if(rc < 0) goto cleanup;
-	rc = HTTPServerListen(server, SERVER_RAW_ADDR, SERVER_RAW_PORT);
+	rc = HTTPServerListen(server, CONFIG_SERVER_RAW_ADDR, CONFIG_SERVER_RAW_PORT);
 	if(rc < 0) goto cleanup;
-	int const port = SERVER_RAW_PORT;
+	int const port = CONFIG_SERVER_RAW_PORT;
 	alogf("Hash Archive running at http://localhost:%d/\n", port);
 	server_raw = server; server = NULL;
 

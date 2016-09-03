@@ -76,11 +76,11 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	rc = hash_uri_parse(URI, obj);
 	if(rc < 0) goto cleanup;
 
-	responses = calloc(SOURCES_MAX, sizeof(struct response));
+	responses = calloc(CONFIG_SOURCES_MAX, sizeof(struct response));
 	if(!responses) rc = UV_ENOMEM;
 	if(rc < 0) goto cleanup;
 
-	ssize_t const count = hx_get_sources(obj, responses, SOURCES_MAX);
+	ssize_t const count = hx_get_sources(obj, responses, CONFIG_SOURCES_MAX);
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
 

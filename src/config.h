@@ -1,20 +1,29 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#ifndef CONFIG_H
+#define CONFIG_H
+
 // TODO: Proper getenv() based configuration?
 
-#define SERVER_RAW_ADDR NULL
-#define SERVER_RAW_PORT 8000
+#define CONFIG_SERVER_RAW_ADDR NULL
+#define CONFIG_SERVER_RAW_PORT 8000
 
-#define QUEUE_WORKERS 16
+#define CONFIG_QUEUE_WORKERS 16
 
-#define HISTORY_MAX 30
-#define SOURCES_MAX 30
+#define CONFIG_HISTORY_MAX 30
+#define CONFIG_SOURCES_MAX 30
 
-#define CRAWL_DELAY_SECONDS (60*60*24)
+#define CONFIG_CRAWL_DELAY_SECONDS (60*60*24)
 
-static strarg_t const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
-static strarg_t const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
+#define CONFIG_DB_PATH "./test.db"
+
+#define CONFIG_TEMPLATE_DIR "./templates"
+
+#define CONFIG_IMPORT_SOCKET_PATH "./import.sock"
+
+static char const *const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
+static char const *const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
 
 static char const *const critical[] = {
 	"https://ftp.heanet.ie/mirrors/linuxmint.com/stable/18/linuxmint-18-cinnamon-64bit.iso",
@@ -26,4 +35,5 @@ static char const *const critical[] = {
 	"http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-23.noarch.rpm",
 };
 
+#endif
 

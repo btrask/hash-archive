@@ -9,8 +9,8 @@
 #include "util/hash.h"
 #include "db.h"
 #include "errors.h"
+#include "config.h"
 
-#define SOCKET_PATH "./import.sock"
 #define RESPONSE_BATCH_SIZE 50
 
 static int read_len(uv_stream_t *const stream, unsigned char *const out, size_t const len) {
@@ -172,8 +172,8 @@ int import_init(void) {
 	int rc = uv_pipe_init(async_loop, pipe, false);
 	if(rc < 0) goto cleanup;
 
-	async_fs_unlink(SOCKET_PATH);
-	rc = uv_pipe_bind(pipe, SOCKET_PATH);
+	async_fs_unlink(CONFIG_IMPORT_SOCKET_PATH);
+	rc = uv_pipe_bind(pipe, CONFIG_IMPORT_SOCKET_PATH);
 	if(rc < 0) goto cleanup;
 
 	rc = uv_listen((uv_stream_t *)pipe, 511, connection_cb);

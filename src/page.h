@@ -7,6 +7,7 @@
 #include "util/hash.h"
 #include "util/html.h"
 #include "util/Template.h"
+#include "config.h"
 
 #define URI_MAX (1023+1)
 
@@ -30,7 +31,7 @@ int page_critical(HTTPConnectionRef const conn);
 static void template_load(strarg_t const path, TemplateRef *const out) {
 	// TODO
 	char full[4095+1];
-	int rc = snprintf(full, sizeof(full), "./templates/%s", path);
+	int rc = snprintf(full, sizeof(full), "%s/%s", CONFIG_TEMPLATE_DIR, path);
 	assertf(rc >= 0, "Template path error: %s\n", strerror(errno));
 	assert(rc < sizeof(full));
 	rc = TemplateCreateFromPath(full, out);
