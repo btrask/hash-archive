@@ -9,14 +9,6 @@
 #include "util/Template.h"
 #include "config.h"
 
-#define URI_MAX (1023+1)
-
-#define assertf(x, ...) assert(x) // TODO
-
-// TODO
-typedef char str_t;
-typedef char const *strarg_t;
-
 char *date_html(char const *const label_escaped, time_t const ts);
 char *link_html(hash_uri_type const t, strarg_t const URI_unsafe);
 char *item_html(hash_uri_type const type, strarg_t const label_escaped, strarg_t const URI_unsafe, bool const deprecated);

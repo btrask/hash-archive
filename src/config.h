@@ -4,6 +4,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "common.h"
+
 // TODO: Proper getenv() based configuration?
 
 #define CONFIG_SERVER_RAW_ADDR NULL
@@ -22,10 +24,10 @@
 
 #define CONFIG_IMPORT_SOCKET_PATH "./import.sock"
 
-static char const *const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
-static char const *const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
+static strarg_t const example_url = "https://torrents.linuxmint.com/torrents/linuxmint-18-cinnamon-64bit.iso.torrent";
+static strarg_t const example_hash_uri = "hash://sha256/030d8c2d6b7163a482865716958ca03806dfde99a309c927e56aa9962afbb95d";
 
-static char const *const critical[] = {
+static strarg_t const critical[] = {
 	"https://ftp.heanet.ie/mirrors/linuxmint.com/stable/18/linuxmint-18-cinnamon-64bit.iso",
 	"https://code.jquery.com/jquery-2.2.3.min.js",
 	"https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js",

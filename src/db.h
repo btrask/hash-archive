@@ -7,11 +7,6 @@
 #include "util/hash.h"
 #include "common.h"
 
-// TODO
-#define URI_MAX (1023+1)
-#define TYPE_MAX (255+1)
-typedef char const *strarg_t;
-
 enum {
 	// This is the latest response for this URL.
 	// If there is a later response and their hashes differ,

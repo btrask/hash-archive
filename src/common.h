@@ -22,5 +22,13 @@
 	free(*__x); *__x = NULL; \
 } while(0)
 
+#define assertf(x, ...) assert(x) // TODO
+
+#define URI_MAX (1023+1)
+#define TYPE_MAX (255+1)
+
+typedef char str_t;
+typedef char const *strarg_t;
+
 #endif
 
