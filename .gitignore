@@ -9,3 +9,5 @@ import.sock
 node_modules
 hash-archive.db
 hash-archive.db-lock
+key.pem
+crt.pem

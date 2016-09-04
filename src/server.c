@@ -194,15 +194,19 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	rc = HTTPHeadersCreateFromConnection(conn, &headers);
 	if(rc < 0) goto cleanup;
 
+	// DNS rebinding protection.
+	// TODO: Accept IP addresses? Lots of complexity...
 	strarg_t const host = HTTPHeadersGet(headers, "host");
 	host_t obj[1];
 	rc = host_parse(host, obj);
-	// TODO: Verify Host header to prevent DNS rebinding.
+	if(	0 != strcasecmp(obj->domain, CONFIG_HOSTNAME) &&
+		0 != strcasecmp(obj->domain, "localhost")) rc = UV_EACCES;
+	if(rc < 0) goto cleanup;
 
-/*	if(CONFIG_SERVER_PORT_TLS && server != server_tls) {
-		rc = HTTPConnectionSendSecureRedirect(conn, obj->domain, CONFIG_SERVER_PORT_TLS, URI);
+	if(CONFIG_SERVER_TLS_PORT && server != server_tls) {
+		rc = HTTPConnectionSendSecureRedirect(conn, obj->domain, CONFIG_SERVER_TLS_PORT, URI);
 		goto cleanup;
-	}*/
+	}
 
 	rc = -1;
 	rc = rc >= 0 ? rc : GET_index(conn, method, URI, headers);
@@ -222,30 +226,63 @@ cleanup:
 }
 
 static void init(void *ignore) {
-	HTTPServerRef server = NULL;
+	HTTPServerRef raw = NULL;
+	HTTPServerRef tls = NULL;
 	int rc;
 
 	rc = hx_db_load();
-	if(rc < 0) goto cleanup;
+	if(rc < 0) {
+		alogf("Database load error: %s\n", hx_strerror(rc));
+		goto cleanup;
+	}
 
 	queue_init();
 	for(size_t i = 0; i < CONFIG_QUEUE_WORKERS; i++) {
 		async_spawn(STACK_DEFAULT, queue_work_loop, NULL);
 	}
 
-	rc = import_init();
-	if(rc < 0) goto cleanup;
+	if(CONFIG_SERVER_TLS_PORT) {
+		int const port = CONFIG_SERVER_RAW_PORT;
+		rc = HTTPServerCreate(listener, NULL, &tls);
+		if(rc < 0) {
+			alogf("TLS server error: %s\n", hx_strerror(rc));
+			goto cleanup;
+		}
+		rc = HTTPServerListenSecurePaths(tls, CONFIG_SERVER_TLS_ADDR, port,
+			CONFIG_SERVER_TLS_KEY_PATH,
+			CONFIG_SERVER_TLS_CRT_PATH);
+		if(rc < 0) {
+			alogf("TLS server error: %s\n", hx_strerror(rc));
+			goto cleanup;
+		}
+		alogf("Hash Archive running at https://localhost:%d/\n", port);
+		server_tls = tls; tls = NULL;
+	}
+	if(CONFIG_SERVER_RAW_PORT) {
+		int const port = CONFIG_SERVER_RAW_PORT;
+		rc = HTTPServerCreate(listener, NULL, &raw);
+		if(rc < 0) {
+			alogf("Raw server error: %s\n", hx_strerror(rc));
+			goto cleanup;
+		}
+		rc = HTTPServerListen(raw, CONFIG_SERVER_RAW_ADDR, port);
+		if(rc < 0) {
+			alogf("Raw server error: %s\n", hx_strerror(rc));
+			goto cleanup;
+		}
+		alogf("Hash Archive running at http://localhost:%d/\n", port);
+		server_raw = raw; raw = NULL;
+	}
 
-	rc = HTTPServerCreate(listener, NULL, &server);
-	if(rc < 0) goto cleanup;
-	rc = HTTPServerListen(server, CONFIG_SERVER_RAW_ADDR, CONFIG_SERVER_RAW_PORT);
-	if(rc < 0) goto cleanup;
-	int const port = CONFIG_SERVER_RAW_PORT;
-	alogf("Hash Archive running at http://localhost:%d/\n", port);
-	server_raw = server; server = NULL;
+	rc = import_init();
+	if(rc < 0) {
+		alogf("Import socket error: %s\n", hx_strerror(rc));
+		goto cleanup;
+	}
 
 cleanup:
-	HTTPServerFree(&server);
+	HTTPServerFree(&raw);
+	HTTPServerFree(&tls);
 	return;
 }
 static void term(void *ignore) {

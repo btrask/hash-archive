@@ -9,8 +9,14 @@
 // TODO: Proper getenv() based configuration?
 
 #define CONFIG_HOSTNAME "hash-archive.org"
+
 #define CONFIG_SERVER_RAW_ADDR NULL
-#define CONFIG_SERVER_RAW_PORT 8000
+#define CONFIG_SERVER_RAW_PORT 8000 // 0 for disabled
+
+#define CONFIG_SERVER_TLS_ADDR NULL
+#define CONFIG_SERVER_TLS_PORT 0 // 0 for disabled
+#define CONFIG_SERVER_TLS_KEY_PATH "./key.pem"
+#define CONFIG_SERVER_TLS_CRT_PATH "./crt.pem"
 
 #define CONFIG_QUEUE_WORKERS 16
 
