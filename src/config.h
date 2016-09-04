@@ -8,6 +8,7 @@
 
 // TODO: Proper getenv() based configuration?
 
+#define CONFIG_HOSTNAME "hash-archive.org"
 #define CONFIG_SERVER_RAW_ADDR NULL
 #define CONFIG_SERVER_RAW_PORT 8000
 
