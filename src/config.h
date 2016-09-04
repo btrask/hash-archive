@@ -18,7 +18,7 @@
 
 #define CONFIG_CRAWL_DELAY_SECONDS (60*60*24)
 
-#define CONFIG_DB_PATH "./test.db"
+#define CONFIG_DB_PATH "./hash-archive.db"
 
 #define CONFIG_TEMPLATE_DIR "./templates"
 
