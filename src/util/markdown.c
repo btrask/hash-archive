@@ -202,34 +202,23 @@ static void md_convert_hashes(cmark_iter *const iter) {
 
 int md_process(cmark_node *const node) {
 	assert(node);
-	cmark_iter *iter = NULL;
-
-	iter = cmark_iter_new(node);
+	cmark_iter *iter = cmark_iter_new(node);
 	assert(iter);
+
+	// Due to the way cmark_iter_reset works, we're missing
+	// the first event each time. But that's fine.
+	cmark_iter_reset(iter, node, CMARK_EVENT_ENTER);
 	md_escape(iter);
-	cmark_iter_free(iter); iter = NULL;
-	// TODO: cmark_iter_reset()
-
-	iter = cmark_iter_new(node);
-	assert(iter);
+	cmark_iter_reset(iter, node, CMARK_EVENT_ENTER);
 	md_escape_inline(iter);
-	cmark_iter_free(iter); iter = NULL;
-
-	iter = cmark_iter_new(node);
-	assert(iter);
+	cmark_iter_reset(iter, node, CMARK_EVENT_ENTER);
 	md_autolink(iter);
-	cmark_iter_free(iter); iter = NULL;
-
-	iter = cmark_iter_new(node);
-	assert(iter);
+	cmark_iter_reset(iter, node, CMARK_EVENT_ENTER);
 	md_block_external_images(iter);
-	cmark_iter_free(iter); iter = NULL;
-
-	iter = cmark_iter_new(node);
-	assert(iter);
+	cmark_iter_reset(iter, node, CMARK_EVENT_ENTER);
 	md_convert_hashes(iter);
-	cmark_iter_free(iter); iter = NULL;
 
+	cmark_iter_free(iter); iter = NULL;
 	return 0;
 }
 
