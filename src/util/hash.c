@@ -202,7 +202,7 @@ int hash_uri_parse_multihash(char const *const URI, hash_uri_t *const out) {
 	unsigned char tmp[2+HASH_DIGEST_MAX];
 	ssize_t len = b58_decode(URI+m[0].rm_so, match_len(&m[0]), tmp, sizeof(tmp));
 	if(len < 0) return len;
-	if(len < 2) return HASH_EPANIC;
+	if(len < 2) return HASH_EPARSE;
 	switch(tmp[0]) {
 		case 0x11: out->algo = HASH_ALGO_SHA1; break;
 		case 0x12: out->algo = HASH_ALGO_SHA256; break;

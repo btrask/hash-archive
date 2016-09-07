@@ -92,13 +92,19 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	if(rc < 0) goto cleanup;
 	char multihash[URI_MAX];
 	rc = hash_uri_variant(obj, LINK_MULTIHASH, multihash, sizeof(multihash));
+	if(HASH_ENOTSUP == rc) {
+		strlcpy(multihash, "", sizeof(multihash));
+		rc = 0;
+	}
 	if(rc < 0) goto cleanup;
 
 	escaped = html_encode(URI);
 	hash_link = direct_link_html(obj->type, URI);
 	google_url = aasprintf("https://www.google.com/search?q=%s", hex);
 	ddg_url = aasprintf("https://duckduckgo.com/?q=%s", hex);
-	ipfs_url = aasprintf("https://ipfs.io/api/v0/block/get?arg=%s", multihash);
+	ipfs_url = multihash[0] ?
+		aasprintf("https://ipfs.io/api/v0/block/get?arg=%s", multihash) :
+		aasprintf("#unsupported-input"); // TODO: Better error handling here?
 	virustotal_url = aasprintf("https://www.virustotal.com/en/file/%s/analysis/", hex);
 
 	TemplateStaticArg args[] = {
