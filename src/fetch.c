@@ -5,7 +5,7 @@
 #include "util/hash.h"
 #include "util/url.h"
 #include "db.h"
-#include "page.h" // TODO: Only for general defs
+#include "common.h"
 #include "errors.h"
 
 #define USER_AGENT "Hash Archive (https://github.com/btrask/hash-archive)"
