@@ -12,6 +12,8 @@
 #define URL_HOST_FMT "%255[^/]"
 #define URL_DOMAIN_MAX (255+1)
 #define URL_DOMAIN_FMT "%255[a-zA-Z0-9.-]"
+#define URL_PORT_MAX (15+1)
+#define URL_PORT_FMT "%15[0-9]"
 #define URL_PATH_MAX (1023+1)
 #define URL_PATH_FMT "%1023[^?#]"
 #define URL_QUERY_MAX (1023+1)
@@ -34,7 +36,7 @@ int url_format(url_t const *const URL, char *const out, size_t const max);
 
 typedef struct {
 	char domain[URL_DOMAIN_MAX];
-	unsigned int port;
+	char port[URL_PORT_MAX];
 } host_t;
 int host_parse(char const *const host, host_t *const out);
 int host_format(host_t const *const host, char *const out, size_t const max);

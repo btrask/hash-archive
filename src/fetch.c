@@ -16,7 +16,6 @@ static int send_get(strarg_t const URL, strarg_t const client, HTTPConnectionRef
 	HTTPConnectionRef conn = NULL;
 	url_t obj[1];
 	host_t host[1];
-	char port[15+1];
 	bool secure;
 	int rc = 0;
 
@@ -24,7 +23,6 @@ static int send_get(strarg_t const URL, strarg_t const client, HTTPConnectionRef
 	if(rc < 0) goto cleanup;
 	rc = host_parse(obj->host, host);
 	if(rc < 0) goto cleanup;
-	snprintf(port, sizeof(port), "%u", host->port);
 
 	if(0 == strcmp(obj->scheme, "http")) {
 		secure = false;
@@ -35,7 +33,7 @@ static int send_get(strarg_t const URL, strarg_t const client, HTTPConnectionRef
 		goto cleanup;
 	}
 
-	rc = rc < 0 ? rc : HTTPConnectionConnect(host->domain, port, secure, 0, &conn);
+	rc = rc < 0 ? rc : HTTPConnectionConnect(host->domain, host->port, secure, 0, &conn);
 	rc = rc < 0 ? rc : HTTPConnectionWriteRequest(conn, HTTP_GET, obj->path, obj->host);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "User-Agent", USER_AGENT);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "X-Forwarded-For", client); // TODO

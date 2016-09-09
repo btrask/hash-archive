@@ -63,10 +63,9 @@ int host_parse(char const *const host, host_t *const out) {
 	assert(out);
 	if(!host) return URL_EINVAL;
 	out->domain[0] = '\0';
-	out->port = 0;
-	sscanf(host, URL_DOMAIN_FMT ":%u", out->domain, &out->port);
+	out->port[0] = '\0';
+	sscanf(host, URL_DOMAIN_FMT ":" URL_PORT_FMT, out->domain, out->port);
 	if('\0' == out->domain[0]) return URL_EPARSE;
-	if(out->port > UINT16_MAX) return URL_EPARSE;
 	return 0;
 }
 int host_format(host_t const *const host, char *const out, size_t const max) {
@@ -74,10 +73,10 @@ int host_format(host_t const *const host, char *const out, size_t const max) {
 	assert(max > 0);
 	if(!host) return URL_EINVAL;
 	int rc = 0;
-	if(host->port) {
-		rc = snprintf(out, max, "%s:%u", host->domain, host->port);
-	} else {
+	if('\0' == host->port[0]) {
 		rc = snprintf(out, max, "%s", host->domain);
+	} else {
+		rc = snprintf(out, max, "%s:%s", host->domain, host->port);
 	}
 	if(rc >= max) return -ENAMETOOLONG;
 	if(rc < 0) return rc;
