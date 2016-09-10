@@ -242,7 +242,7 @@ static void init(void *ignore) {
 	}
 
 	if(CONFIG_SERVER_TLS_PORT) {
-		int const port = CONFIG_SERVER_RAW_PORT;
+		int const port = CONFIG_SERVER_TLS_PORT;
 		rc = HTTPServerCreate(listener, NULL, &tls);
 		if(rc < 0) {
 			alogf("TLS server error: %s\n", hx_strerror(rc));
