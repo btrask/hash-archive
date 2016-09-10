@@ -1,6 +1,9 @@
 # Copyright 2016 Ben Trask
 # MIT licensed (see LICENSE for details)
 
+DESTDIR ?=
+PREFIX ?= /usr/local
+
 ROOT_DIR := .
 BUILD_DIR := $(ROOT_DIR)/build
 SRC_DIR := $(ROOT_DIR)/src
@@ -117,6 +120,10 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c | cmark libbase58 libasync libkvstore
 
 # TODO: Find files in subdirectories without using shell?
 -include $(shell find $(BUILD_DIR)/h -name "*.d")
+
+.PHONY: install-root-certs
+install-root-certs:
+	$(MAKE) install-root-certs -C $(DEPS_DIR)/libasync
 
 .PHONY: clean
 clean:
