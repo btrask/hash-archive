@@ -10,6 +10,7 @@ var zlib = require("zlib");
 var csv = require("csv");
 
 var mime = require("./mime");
+var hximport = require("./hximport");
 
 if(process.argv.length <= 3) {
 	console.log("Usage: hash-archive-import-iacencus algo path");
@@ -31,56 +32,6 @@ function log(str) {
 }
 
 
-var ALGOS = [];
-ALGOS[0] = "md5";
-ALGOS[1] = "sha1";
-ALGOS[2] = "sha256";
-ALGOS[3] = "sha384";
-ALGOS[4] = "sha512";
-ALGOS[5] = "blake2s";
-ALGOS[6] = "blake2b";
-var ALGO_MAX = 7;
-
-function write_uint16(sock, val) {
-	var buf = new Buffer(2);
-	buf.writeUInt16BE(val, 0);
-	return sock.write(buf);
-}
-function write_uint64(sock, val) {
-	var buf;
-	if(null === val) {
-		buf = new Buffer([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
-	} else {
-		buf = new Buffer(8);
-		buf.writeUIntBE(val, 0, 8);
-	}
-	return sock.write(buf);
-}
-function write_string(sock, str) {
-	var buf = new Buffer(str || "", "utf8");
-	write_uint16(sock, buf.length);
-	return sock.write(buf);
-}
-function write_blob(sock, buf) {
-	if(!buf) {
-		return write_uint16(sock, 0);
-	}
-	write_uint16(sock, buf.length);
-	return sock.write(buf);
-}
-function write_response(sock, res) {
-	var blocking = false;
-	blocking = !write_uint64(sock, res.time) || blocking;
-	blocking = !write_string(sock, res.url) || blocking;
-	blocking = !write_uint64(sock, res.status+0xffff) || blocking;
-	blocking = !write_string(sock, res.type) || blocking;
-	blocking = !write_uint64(sock, res.length) || blocking;
-	blocking = !write_uint16(sock, ALGO_MAX) || blocking;
-	for(var i = 0; i < ALGO_MAX; i++) {
-		blocking = !write_blob(sock, res.digests[ALGOS[i]]) || blocking;
-	}
-	return !blocking;
-}
 
 function write_response_row(sock, time, algo, row, cb) {
 	var url = "https://archive.org/download/"+row[0]+"/"+row[1];
@@ -93,7 +44,7 @@ function write_response_row(sock, time, algo, row, cb) {
 
 	var digests = {};
 	digests[algo] = hash;
-	var blocking = !write_response(sock, {
+	var blocking = !hximport.write_response(sock, {
 		time: time,
 		url: url,
 		status: 200,
@@ -123,7 +74,7 @@ var parser = csv.parse({ delimiter: "\t" });
 var time = null;
 var counter = 0, total = 0;
 
-if(-1 === ALGOS.indexOf(algo)) {
+if(-1 === hximport.ALGOS.indexOf(algo)) {
 	console.error("Invalid algorithm "+algo);
 	process.exit(1);
 }
