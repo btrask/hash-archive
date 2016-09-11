@@ -135,21 +135,21 @@ static int GET_api_enqueue(HTTPConnectionRef const conn, HTTPMethod const method
 	char url[1023+1]; url[0] = '\0';
 	sscanf(URI, "/api/enqueue/%1023s", url);
 	if('\0' == url[0]) return -1;
-	return 501; // TODO
+	return hx_httperr(api_enqueue(conn, url));
 }
 static int GET_api_history(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	char url[1023+1]; url[0] = '\0';
 	sscanf(URI, "/api/history/%1023s", url);
 	if('\0' == url[0]) return -1;
-	return 501; // TODO
+	return hx_httperr(api_history(conn, url));
 }
 static int GET_api_sources(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
 	char hash[1023+1]; hash[0] = '\0';
 	sscanf(URI, "/api/sources/%1023s", hash);
 	if('\0' == hash[0]) return -1;
-	return 501; // TODO
+	return hx_httperr(api_sources(conn, hash));
 }
 
 static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {

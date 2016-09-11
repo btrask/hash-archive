@@ -34,40 +34,6 @@ bool const deprecated[HASH_ALGO_MAX] = {
 
 
 
-static bool res_eq(struct response const *const a, struct response const *const b) {
-	if(a == b) return true;
-	if(!a || !b) return false;
-
-	// Don't merge responses that aren't "OK".
-	if(200 != a->status || 200 != b->status) return false;
-
-	// We currently don't display types in our URI, so comparing them is confusing.
-//	if(0 != strcmp(a->type, b->type)) return false;
-
-	// If lengths are unknown (UINT64_MAX) this fails.
-//	if(a->length != b->length) return false;
-
-	// We only compare the prefix. For empty hashes this is zero which is good.
-	size_t match = 0;
-	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
-		size_t const len = MIN(a->digests[i].len, b->digests[i].len);
-		if(0 != memcmp(a->digests[i].buf, b->digests[i].buf, len)) return false;
-		if(len >= 12) match++;
-	}
-
-	// We require at least one hash of at least 12 bytes having compared equal.
-	if(0 == match) return false;
-
-	return true;
-}
-static void res_merge_common_hashes(struct response *const responses, size_t const len) {
-	for(size_t i = 1; i < len; i++) {
-		bool const eq = res_eq(&responses[i-1], &responses[i]);
-		if(!eq) continue;
-		responses[i-1].next = &responses[i];
-		responses[i].prev = &responses[i-1];
-	}
-}
 
 
 static char *item_html_obj(hash_uri_t const *const obj) {
@@ -171,8 +137,6 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	ssize_t const count = hx_get_history(URL, responses, CONFIG_HISTORY_MAX);
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
-
-	res_merge_common_hashes(responses, count);
 
 	TemplateStaticArg args[] = {
 		{"query", escaped},

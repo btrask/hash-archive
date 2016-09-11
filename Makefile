@@ -9,6 +9,9 @@ BUILD_DIR := $(ROOT_DIR)/build
 SRC_DIR := $(ROOT_DIR)/src
 DEPS_DIR := $(ROOT_DIR)/deps
 
+# TODO: Hardcoded version number...
+YAJL_BUILD_DIR := $(DEPS_DIR)/yajl/build/yajl-2.1.1
+
 CFLAGS += -std=c99 -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=500
 CFLAGS += -g -fno-omit-frame-pointer
 CFLAGS += -fstack-protector
@@ -73,6 +76,7 @@ OBJECTS := \
 	$(BUILD_DIR)/src/page_history.o \
 	$(BUILD_DIR)/src/page_sources.o \
 	$(BUILD_DIR)/src/page_critical.o \
+	$(BUILD_DIR)/src/api.o \
 	$(BUILD_DIR)/src/fetch.o \
 	$(BUILD_DIR)/src/queue.o \
 	$(BUILD_DIR)/src/import.o \
@@ -104,6 +108,9 @@ CFLAGS += -I$(DEPS_DIR)/cmark/src -I$(DEPS_DIR)/cmark/build/src
 
 STATIC_LIBS += $(DEPS_DIR)/libbase58/.libs/libbase58.a
 CFLAGS += -I$(DEPS_DIR)/libbase58
+
+STATIC_LIBS += $(YAJL_BUILD_DIR)/lib/libyajl_s.a
+CFLAGS += -I$(YAJL_BUILD_DIR)/include
 
 
 .PHONY: all
@@ -147,6 +154,11 @@ $(DEPS_DIR)/libbase58/.libs/libbase58.a: | libbase58
 .PHONY: libbase58
 libbase58:
 	$(MAKE) -C $(DEPS_DIR)/libbase58 --no-print-directory
+
+$(YAJL_BUILD_DIR)/lib/libyajl_s.a: | yajl
+.PHONY: yajl
+yajl:
+	$(MAKE) yajl_s/fast -C $(DEPS_DIR)/yajl/build --no-print-directory
 
 # TODO: Have libasync bundle these directly.
 $(DEPS_DIR)/libasync/build/libasync.a: | libasync

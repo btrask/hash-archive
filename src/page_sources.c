@@ -16,18 +16,6 @@ static TemplateRef notfound = NULL;
 static TemplateRef short_hash = NULL;
 static TemplateRef weak_hash = NULL;
 
-static void res_merge_common_urls(struct response *const responses, size_t const len) {
-	for(size_t i = 1; i < len; i++) {
-		for(size_t j = i; j-- > 0;) {
-			if(responses[j].next) continue;
-			if(0 != strcmp(responses[j].url, responses[i].url)) continue;
-			responses[j].next = &responses[i];
-			responses[i].prev = &responses[j];
-			break;
-		}
-	}
-}
-
 static int source_var(void *const actx, char const *const var, TemplateWriteFn const wr, void *const wctx) {
 	struct response const *const res = actx;
 
@@ -83,8 +71,6 @@ int page_sources(HTTPConnectionRef const conn, strarg_t const URI) {
 	ssize_t const count = hx_get_sources(obj, responses, CONFIG_SOURCES_MAX);
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
-
-	res_merge_common_urls(responses, count);
 
 	// These don't need escaping because they are restricted character sets.
 	char hex[HASH_DIGEST_MAX*2+1];

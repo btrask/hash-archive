@@ -99,6 +99,52 @@ int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_
 	return 0;
 }
 
+static bool res_content_eq(struct response const *const a, struct response const *const b) {
+	if(a == b) return true;
+	if(!a || !b) return false;
+
+	// Don't merge responses that aren't "OK".
+	if(200 != a->status || 200 != b->status) return false;
+
+	// We currently don't display types in our URI, so comparing them is confusing.
+//	if(0 != strcmp(a->type, b->type)) return false;
+
+	// If lengths are unknown (UINT64_MAX) this fails.
+//	if(a->length != b->length) return false;
+
+	// We only compare the prefix. For empty hashes this is zero which is good.
+	size_t match = 0;
+	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
+		size_t const len = MIN(a->digests[i].len, b->digests[i].len);
+		if(0 != memcmp(a->digests[i].buf, b->digests[i].buf, len)) return false;
+		if(len >= 12) match++;
+	}
+
+	// We require at least one hash of at least 12 bytes having compared equal.
+	if(0 == match) return false;
+
+	return true;
+}
+static void res_merge_common_content(struct response *const responses, size_t const len) {
+	for(size_t i = 1; i < len; i++) {
+		bool const eq = res_content_eq(&responses[i-1], &responses[i]);
+		if(!eq) continue;
+		responses[i-1].next = &responses[i];
+		responses[i].prev = &responses[i-1];
+	}
+}
+static void res_merge_common_urls(struct response *const responses, size_t const len) {
+	for(size_t i = 1; i < len; i++) {
+		for(size_t j = i; j-- > 0;) {
+			if(responses[j].next) continue;
+			if(0 != strcmp(responses[j].url, responses[i].url)) continue;
+			responses[j].next = &responses[i];
+			responses[i].prev = &responses[j];
+			break;
+		}
+	}
+}
+
 ssize_t hx_get_recent(struct response *const out, size_t const max) {
 	assert(out);
 	assert(max > 0);
@@ -188,6 +234,7 @@ ssize_t hx_get_history(strarg_t const URL, struct response *const out, size_t co
 		i++;
 	}
 	rc = 0;
+	res_merge_common_content(out, i);
 
 cleanup:
 	db_cursor_close(cursor); cursor = NULL;
@@ -248,6 +295,7 @@ ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, 
 		i++;
 	}
 	rc = 0;
+	res_merge_common_urls(out, i);
 
 cleanup:
 	db_cursor_close(cursor); cursor = NULL;
