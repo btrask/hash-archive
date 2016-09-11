@@ -132,14 +132,23 @@ static int GET_critical(HTTPConnectionRef const conn, HTTPMethod const method, s
 
 static int GET_api_enqueue(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
-	strarg_t qs = NULL;
-	if(0 != uripathcmp(URI, "/api/enqueue/", &qs)) return -1;
+	char url[1023+1]; url[0] = '\0';
+	sscanf(URI, "/api/enqueue/%1023s", url);
+	if('\0' == url[0]) return -1;
+	return 501; // TODO
+}
+static int GET_api_history(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
+	char url[1023+1]; url[0] = '\0';
+	sscanf(URI, "/api/history/%1023s", url);
+	if('\0' == url[0]) return -1;
 	return 501; // TODO
 }
 static int GET_api_sources(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
-	strarg_t qs = NULL;
-	if(0 != uripathcmp(URI, "/api/sources/", &qs)) return -1;
+	char hash[1023+1]; hash[0] = '\0';
+	sscanf(URI, "/api/sources/%1023s", hash);
+	if('\0' == hash[0]) return -1;
 	return 501; // TODO
 }
 
@@ -214,6 +223,9 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	rc = rc >= 0 ? rc : GET_history(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_sources(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_critical(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : GET_api_enqueue(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : GET_api_history(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : GET_api_sources(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_static(conn, method, URI, headers);
 	if(rc < 0) rc = 404;
 	if(rc > 0) HTTPConnectionSendStatus(conn, rc);
