@@ -12,25 +12,29 @@
 #include "errors.h"
 #include "config.h"
 
+static yajl_gen_status yajl_gen_string2(yajl_gen hand, const char * str, size_t len) {
+	return yajl_gen_string(hand, (unsigned char const *)str, len);
+}
 static void yajl_print_cb(void *ctx, const char *str, size_t len) {
 	HTTPConnectionRef const conn = ctx;
 	(void) HTTPConnectionWriteChunk(conn, (unsigned char const *)str, len);
 }
+
 static void res_json(struct response const *const res, yajl_gen const json) {
 	yajl_gen_map_open(json);
-	yajl_gen_string(json, (unsigned char const *)STR_LEN("url"));
-	yajl_gen_string(json, (unsigned char const *)res->url, strlen(res->url));
-	yajl_gen_string(json, (unsigned char const *)STR_LEN("timestamp"));
+	yajl_gen_string2(json, STR_LEN("url"));
+	yajl_gen_string2(json, res->url, strlen(res->url));
+	yajl_gen_string2(json, STR_LEN("timestamp"));
 	yajl_gen_integer(json, 1000*res->time);
-	yajl_gen_string(json, (unsigned char const *)STR_LEN("status"));
+	yajl_gen_string2(json, STR_LEN("status"));
 	yajl_gen_integer(json, res->status);
-	yajl_gen_string(json, (unsigned char const *)STR_LEN("type"));
-	yajl_gen_string(json, (unsigned char const *)res->type, strlen(res->type));
-	yajl_gen_string(json, (unsigned char const *)STR_LEN("length"));
+	yajl_gen_string2(json, STR_LEN("type"));
+	yajl_gen_string2(json, res->type, strlen(res->type));
+	yajl_gen_string2(json, STR_LEN("length"));
 	yajl_gen_integer(json, res->status);
-//	yajl_gen_string(json, (unsigned char const *)STR_LEN("latest"));
+//	yajl_gen_string2(json, STR_LEN("latest"));
 //	yajl_gen_bool(json, !!(res->flags & HX_RES_LATEST));
-	yajl_gen_string(json, (unsigned char const *)STR_LEN("hashes"));
+	yajl_gen_string2(json, STR_LEN("hashes"));
 	yajl_gen_array_open(json);
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		hash_uri_t obj = {
@@ -42,12 +46,12 @@ static void res_json(struct response const *const res, yajl_gen const json) {
 		if(!obj.len) continue;
 		char hash[URI_MAX];
 		hash_uri_format(&obj, hash, sizeof(hash));
-		yajl_gen_string(json, (unsigned char const *)hash, strlen(hash));
+		yajl_gen_string2(json, hash, strlen(hash));
 	}
 	yajl_gen_array_close(json);
 	yajl_gen_map_close(json);
 }
-static int api_response_list(HTTPConnectionRef const conn, struct response const *const responses, size_t const count) {
+static int response_list(HTTPConnectionRef const conn, struct response const *const responses, size_t const count) {
 	yajl_gen json = NULL;
 	int rc = 0;
 
@@ -95,7 +99,7 @@ int api_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
 
-	rc = api_response_list(conn, responses, count);
+	rc = response_list(conn, responses, count);
 	if(rc < 0) goto cleanup;
 
 cleanup:
@@ -118,7 +122,7 @@ int api_sources(HTTPConnectionRef const conn, strarg_t const hash) {
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
 
-	rc = api_response_list(conn, responses, count);
+	rc = response_list(conn, responses, count);
 	if(rc < 0) goto cleanup;
 
 cleanup:
