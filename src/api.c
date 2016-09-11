@@ -38,7 +38,7 @@ static void res_json(struct response const *const res, yajl_gen const json) {
 	yajl_gen_array_open(json);
 	for(size_t i = 0; i < HASH_ALGO_MAX; i++) {
 		hash_uri_t obj = {
-			.type = LINK_HASH_URI,
+			.type = LINK_PREFIX, // For Kevin Marks
 			.algo = i,
 			.buf = (unsigned char *)res->digests[i].buf,
 			.len = res->digests[i].len,
