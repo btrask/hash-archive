@@ -128,6 +128,12 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c | cmark libbase58 libasync libkvstore
 # TODO: Find files in subdirectories without using shell?
 -include $(shell find $(BUILD_DIR)/h -name "*.d")
 
+.PHONY: install
+install: all install-root-certs
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install $(BUILD_DIR)/hash-archive $(DESTDIR)$(PREFIX)/bin
+	- setcap "CAP_NET_BIND_SERVICE=+ep" $(DESTDIR)$(PREFIX)/bin/hash-archive
+
 .PHONY: install-root-certs
 install-root-certs:
 	$(MAKE) install-root-certs -C $(DEPS_DIR)/libasync
