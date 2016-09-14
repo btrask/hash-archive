@@ -4,4 +4,5 @@ set -e
 (cd ./deps/libasync && ./configure)
 (cd ./deps/libkvstore && ./configure)
 (cd ./deps/libbase58 && ./autogen.sh && ./configure)
+(cd ./deps/yajl && ./configure)
 
