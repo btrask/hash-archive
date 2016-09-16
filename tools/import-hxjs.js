@@ -8,8 +8,17 @@ var sqlite = require("sqlite3");
 
 var hximport = require("./hximport");
 
+if(process.argv.length <= 2) {
+	console.error("Usage: import-hxjs db-path");
+	process.exit(1);
+}
+
 var socket = net.createConnection("./import.sock");
 var db = new sqlite.Database(process.argv[2], sqlite.OPEN_READWRITE);
+
+function hex(buf) {
+	return buf ? buf.toString("hex") : null;
+}
 
 function next(cid, cb) {
 	db.get(
@@ -38,6 +47,7 @@ function next(cid, cb) {
 				digests[hashes[i].algo] = hashes[i].data;
 			}
 
+			console.log(res.url, hex(digests["sha256"]));
 			hximport.write_response(socket, {
 				time: res.time/1000,
 				url: res.url,
