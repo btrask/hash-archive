@@ -14,7 +14,7 @@ var db = new sqlite.Database(process.argv[2], sqlite.OPEN_READWRITE);
 function next(cid, cb) {
 	db.get(
 		"SELECT req.request_id AS id, req.url, res.status,\n"+
-			"res.content_type AS type, res.response_time AS time\n"+
+			"res.content_type AS type, res.response_time AS time,\n"+
 			"res.response_id AS response_id\n"+
 		"FROM responses AS res\n"+
 		"INNER JOIN requests AS req ON (res.request_id = req.request_id)\n"+
