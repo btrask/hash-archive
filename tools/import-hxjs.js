@@ -15,6 +15,7 @@ function next(cid, cb) {
 	db.get(
 		"SELECT req.request_id AS id, req.url, res.status,\n"+
 			"res.content_type AS type, res.response_time AS time\n"+
+			"res.response_id AS response_id\n"+
 		"FROM responses AS res\n"+
 		"INNER JOIN requests AS req ON (res.request_id = req.request_id)\n"+
 		"WHERE req.request_id > ?\n"+
@@ -27,7 +28,9 @@ function next(cid, cb) {
 		db.all(
 			"SELECT h.algo, h.data\n"+
 			"FROM response_hashes AS rh\n"+
-			"INNER JOIN hashes AS h ON (rh.hash_id = h.hash_id)",
+			"INNER JOIN hashes AS h ON (rh.hash_id = h.hash_id)\n"+
+			"WHERE rh.response_id = ?",
+			res.response_id,
 		function(err, hashes) {
 			if(err) return cb(err);
 			var digests = {};
