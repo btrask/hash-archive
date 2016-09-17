@@ -63,7 +63,7 @@ static int response_list(HTTPConnectionRef const conn, struct response const *co
 
 	HTTPConnectionWriteResponse(conn, 200, "OK");
 	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
-	HTTPConnectionWriteHeader(conn, "Content-Type", "text/html; charset=utf-8");
+	HTTPConnectionWriteHeader(conn, "Content-Type", "text/json; charset=utf-8");
 	HTTPConnectionBeginBody(conn);
 	yajl_gen_array_open(json);
 
