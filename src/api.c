@@ -84,6 +84,7 @@ int api_enqueue(HTTPConnectionRef const conn, strarg_t const URL) {
 	return UV_ENOSYS; // TODO
 }
 int api_history(HTTPConnectionRef const conn, strarg_t const URL) {
+	size_t const max = CONFIG_API_HISTORY_MAX;
 	struct response *responses = NULL;
 	int rc = 0;
 
@@ -91,11 +92,11 @@ int api_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	rc = url_parse(URL, obj);
 	if(rc < 0) goto cleanup;
 
-	responses = calloc(CONFIG_API_HISTORY_MAX, sizeof(struct response));
+	responses = calloc(max, sizeof(struct response));
 	if(!responses) rc = UV_ENOMEM;
 	if(rc < 0) goto cleanup;
 
-	ssize_t const count = hx_get_history(URL, responses, CONFIG_API_HISTORY_MAX);
+	ssize_t const count = hx_get_history(URL, responses, max);
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
 
@@ -107,6 +108,7 @@ cleanup:
 	return rc;
 }
 int api_sources(HTTPConnectionRef const conn, strarg_t const hash) {
+	size_t const max = CONFIG_API_SOURCES_MAX;
 	struct response *responses = NULL;
 	int rc = 0;
 
@@ -114,11 +116,11 @@ int api_sources(HTTPConnectionRef const conn, strarg_t const hash) {
 	rc = hash_uri_parse(hash, obj);
 	if(rc < 0) goto cleanup;
 
-	responses = calloc(CONFIG_API_SOURCES_MAX, sizeof(struct response));
+	responses = calloc(max, sizeof(struct response));
 	if(!responses) rc = UV_ENOMEM;
 	if(rc < 0) goto cleanup;
 
-	ssize_t const count = hx_get_sources(obj, responses, CONFIG_API_SOURCES_MAX);
+	ssize_t const count = hx_get_sources(obj, responses, max);
 	if(count < 0) rc = count;
 	if(rc < 0) goto cleanup;
 
@@ -127,6 +129,58 @@ int api_sources(HTTPConnectionRef const conn, strarg_t const hash) {
 
 cleanup:
 	FREE(&responses);
+	return rc;
+}
+int api_dump(HTTPConnectionRef const conn, uint64_t const start, uint64_t const duration) {
+	if(!duration) return 0;
+	size_t const max = CONFIG_API_BATCH_SIZE;
+	struct response *responses = NULL;
+	yajl_gen json = NULL;
+	int rc = 0;
+
+	responses = calloc(max, sizeof(struct response));
+	if(!responses) rc = UV_ENOMEM;
+	if(rc < 0) goto cleanup;
+
+	json = yajl_gen_alloc(NULL);
+	if(!json) rc = UV_ENOMEM;
+	if(rc < 0) goto cleanup;
+	yajl_gen_config(json, yajl_gen_print_callback, yajl_print_cb, conn);
+	yajl_gen_config(json, yajl_gen_beautify, 1);
+
+	HTTPConnectionWriteResponse(conn, 200, "OK");
+	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
+	HTTPConnectionWriteHeader(conn, "Content-Type", "text/json; charset=utf-8");
+	HTTPConnectionBeginBody(conn);
+	yajl_gen_array_open(json);
+
+	uint64_t time = start;
+	uint64_t id = 0;
+	for(;;) {
+		ssize_t const count = hx_get_times(time, id, +1, responses, max);
+		if(count <= 0) break;
+
+		for(size_t i = 0; i < count; i++) {
+			if(responses[i].time >= start+duration) break;
+			res_json(&responses[i], json);
+			HTTPConnectionFlush(conn);
+		}
+
+		if(count < max) break;
+		if(responses[count-1].time >= start+duration) break;
+		time = responses[count-1].time;
+		id = responses[count-1].id+1;
+	}
+
+	yajl_gen_array_close(json);
+	HTTPConnectionWriteChunkEnd(conn);
+	HTTPConnectionEnd(conn);
+	rc = 0;
+
+cleanup:
+	FREE(&responses);
+	if(json) yajl_gen_free(json);
+	json = NULL;
 	return rc;
 }
 

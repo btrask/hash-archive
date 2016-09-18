@@ -151,6 +151,15 @@ static int GET_api_sources(HTTPConnectionRef const conn, HTTPMethod const method
 	if('\0' == hash[0]) return -1;
 	return hx_httperr(api_sources(conn, hash));
 }
+static int GET_api_dump(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
+	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
+	unsigned long long start = 0, duration = 0;
+	sscanf(URI, "/api/dump/?start=%llu&duration=%llu", &start, &duration);
+	if(!start || !duration) return -1;
+	if(start > UINT64_MAX) start = UINT64_MAX;
+	if(duration > UINT64_MAX) duration = UINT64_MAX;
+	return hx_httperr(api_dump(conn, (uint64_t)start, (uint64_t)duration));
+}
 
 static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, strarg_t const URI, HTTPHeadersRef const headers) {
 	if(HTTP_GET != method && HTTP_HEAD != method) return -1;
@@ -226,6 +235,7 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	rc = rc >= 0 ? rc : GET_api_enqueue(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_api_history(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_api_sources(conn, method, URI, headers);
+	rc = rc >= 0 ? rc : GET_api_dump(conn, method, URI, headers);
 	rc = rc >= 0 ? rc : GET_static(conn, method, URI, headers);
 	if(rc < 0) rc = 404;
 	if(rc > 0) HTTPConnectionSendStatus(conn, rc);

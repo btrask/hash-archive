@@ -16,6 +16,7 @@ enum {
 
 struct response {
 	uint64_t time;
+	uint64_t id;
 	char url[URI_MAX];
 	int status;
 	char type[TYPE_MAX];
@@ -35,6 +36,7 @@ int hx_response_add(DB_txn *const txn, struct response const *const res, uint64_
 ssize_t hx_get_recent(struct response *const out, size_t const max);
 ssize_t hx_get_history(strarg_t const URL, struct response *const out, size_t const max);
 ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, size_t const max);
+ssize_t hx_get_times(uint64_t const time, uint64_t const id, int const dir, struct response *const out, size_t const max);
 int hx_get_latest(strarg_t const URL, DB_txn *const txn, uint64_t *const time, uint64_t *const id);
 
 enum {

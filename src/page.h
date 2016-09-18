@@ -22,6 +22,7 @@ int page_critical(HTTPConnectionRef const conn);
 int api_enqueue(HTTPConnectionRef const conn, strarg_t const URL);
 int api_history(HTTPConnectionRef const conn, strarg_t const URL);
 int api_sources(HTTPConnectionRef const conn, strarg_t const hash);
+int api_dump(HTTPConnectionRef const conn, uint64_t const start, uint64_t const duration);
 
 static void template_load(strarg_t const path, TemplateRef *const out) {
 	// TODO

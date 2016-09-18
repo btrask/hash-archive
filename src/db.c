@@ -171,6 +171,7 @@ ssize_t hx_get_recent(struct response *const out, size_t const max) {
 		uint64_t time, id;
 		HXTimeIDToResponseKeyUnpack(key, &time, &id);
 		out[i].time = time;
+		out[i].id = id;
 		HXTimeIDToResponseValUnpack(val, txn, &out[i]);
 
 		// Don't list failed responses.
@@ -230,6 +231,7 @@ ssize_t hx_get_history(strarg_t const URL, struct response *const out, size_t co
 		if(rc < 0) goto cleanup;
 
 		out[i].time = time;
+		out[i].id = id;
 		HXTimeIDToResponseValUnpack(res_val, txn, &out[i]);
 		i++;
 	}
@@ -277,6 +279,7 @@ ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, 
 		if(rc < 0) goto cleanup;
 
 		out[i].time = time;
+		out[i].id = id;
 		out[i].flags = 0;
 		HXTimeIDToResponseValUnpack(res_val, txn, &out[i]);
 
@@ -296,6 +299,43 @@ ssize_t hx_get_sources(hash_uri_t const *const obj, struct response *const out, 
 	}
 	rc = 0;
 	res_merge_common_urls(out, i);
+
+cleanup:
+	db_cursor_close(cursor); cursor = NULL;
+	db_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+	if(rc < 0) return rc;
+	return i;
+}
+ssize_t hx_get_times(uint64_t const time, uint64_t const id, int const dir, struct response *const out, size_t const max) {
+	DB_env *db = NULL;
+	DB_txn *txn = NULL;
+	DB_cursor *cursor = NULL;
+	size_t i = 0;
+	int rc;
+
+	rc = hx_db_open(&db);
+	if(rc < 0) goto cleanup;
+	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
+	if(rc < 0) goto cleanup;
+	rc = db_cursor_open(txn, &cursor);
+	if(rc < 0) goto cleanup;
+
+	DB_range range[1];
+	DB_val key[1], val[1];
+	HXTimeIDToResponseRange0(range);
+	HXTimeIDToResponseKeyPack(key, time, id);
+	rc = db_cursor_seekr(cursor, range, key, val, dir);
+	if(rc < 0 && DB_NOTFOUND != rc) goto cleanup;
+	for(; rc >= 0 && i < max; rc = db_cursor_nextr(cursor, range, key, val, dir)) {
+		uint64_t xtime, xid;
+		HXTimeIDToResponseKeyUnpack(key, &xtime, &xid);
+		out[i].time = xtime;
+		out[i].id = xid;
+		HXTimeIDToResponseValUnpack(val, txn, &out[i]);
+		i++;
+	}
+	rc = 0;
 
 cleanup:
 	db_cursor_close(cursor); cursor = NULL;
