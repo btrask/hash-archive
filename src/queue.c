@@ -135,7 +135,7 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	DB_range range_queued[1];
 	HXQueuedURLSurtAndTimeIDRange1(range_queued, txn, surt);
 	rc = db_cursor_firstr(cursor, range_queued, chk_key, NULL, -1);
-	if(rc >= 0) rc = DB_KEYEXIST;
+	if(rc >= 0) goto cleanup; // If it's already queued, return success.
 	if(DB_NOTFOUND != rc) goto cleanup;
 
 	DB_range range_crawled[1];
