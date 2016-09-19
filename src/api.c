@@ -31,7 +31,7 @@ static void res_json(struct response const *const res, yajl_gen const json) {
 	yajl_gen_string2(json, STR_LEN("type"));
 	yajl_gen_string2(json, res->type, strlen(res->type));
 	yajl_gen_string2(json, STR_LEN("length"));
-	yajl_gen_integer(json, res->status);
+	yajl_gen_integer(json, res->length);
 //	yajl_gen_string2(json, STR_LEN("latest"));
 //	yajl_gen_bool(json, !!(res->flags & HX_RES_LATEST));
 	yajl_gen_string2(json, STR_LEN("hashes"));
