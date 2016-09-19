@@ -190,8 +190,9 @@ int queue_timedwait(uint64_t const time, strarg_t const URL, uint64_t const futu
 		rc = hx_get_latest(URL, txn, &ltime, &lid);
 		db_txn_abort(txn); txn = NULL;
 		hx_db_close(&db);
-		if(rc >= 0 && ltime+CONFIG_CRAWL_DELAY_SECONDS >= time) {
-			break;
+		if(rc >= 0) {
+			if(ltime+CONFIG_CRAWL_DELAY_SECONDS >= time) break;
+			rc = DB_NOTFOUND;
 		}
 		if(DB_NOTFOUND != rc) break;
 		rc = async_cond_timedwait(wait_cond, wait_lock, future);
