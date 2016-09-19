@@ -190,7 +190,7 @@ static void md_convert_hashes(cmark_iter *const iter) {
 		char *escaped = QSEscape(URI, strlen(URI), true);
 		size_t const elen = strlen(escaped);
 		cmark_strbuf rel[1];
-		char const qpfx[] = "?q=";
+		char const qpfx[] = "/sources/";
 		cmark_strbuf_init(&DEFAULT_MEM_ALLOCATOR, rel, sizeof(qpfx)-1+elen);
 		cmark_strbuf_put(rel, (unsigned char const *)qpfx, sizeof(qpfx)-1);
 		cmark_strbuf_put(rel, (unsigned char const *)escaped, elen);
