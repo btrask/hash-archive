@@ -14,24 +14,30 @@
 #include "page.h"
 #include "errors.h"
 #include "config.h"
+#include "queue.h"
 
+// fetch.c
 int url_fetch(strarg_t const URL, strarg_t const client, struct response *const out);
 
 
 static uint64_t current_id = 0;
 static async_mutex_t id_lock[1];
 
-static uint64_t latest_time = 0;
-static uint64_t latest_id = 0;
-static async_mutex_t latest_lock[1];
-static async_cond_t latest_cond[1];
+static uint64_t work_time = 0;
+static uint64_t work_id = 0;
+static async_mutex_t work_lock[1];
+static async_cond_t work_cond[1];
 
+static async_mutex_t wait_lock[1];
+static async_cond_t wait_cond[1];
 
 // TODO: Define static async_x_t initializers
 void queue_init(void) {
 	async_mutex_init(id_lock, 0);
-	async_mutex_init(latest_lock, 0);
-	async_cond_init(latest_cond, 0);
+	async_mutex_init(work_lock, 0);
+	async_cond_init(work_cond, 0);
+	async_mutex_init(wait_lock, 0);
+	async_cond_init(wait_cond, 0);
 }
 
 
@@ -60,8 +66,8 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	HXTimeIDQueuedURLAndClientRange0(range);
 	DB_VAL_STORAGE(key, DB_VARINT_MAX*3)
 	db_bind_uint64(key, HXTimeIDQueuedURLAndClient);
-	db_bind_uint64(key, latest_time);
-	db_bind_uint64(key, latest_id+1);
+	db_bind_uint64(key, work_time);
+	db_bind_uint64(key, work_id+1);
 	DB_VAL_STORAGE_VERIFY(key);
 	rc = db_cursor_seekr(cursor, range, key, NULL, +1);
 	if(rc < 0) goto cleanup;
@@ -69,8 +75,8 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	HXTimeIDQueuedURLAndClientKeyUnpack(key, txn, outtime, outid, &URL, &client);
 	strlcpy(outURL, URL ? URL : "", urlmax);
 	strlcpy(outclient, client ? client : "", clientmax);
-	latest_time = *outtime;
-	latest_id = *outid;
+	work_time = *outtime;
+	work_id = *outid;
 cleanup:
 	cursor = NULL;
 	db_txn_abort(txn); txn = NULL;
@@ -160,9 +166,38 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	hx_db_close(&db);
 
 	alogf("enqueued %s (%s)\n", URL, hx_strerror(rc));
-	async_cond_broadcast(latest_cond);
+	async_cond_broadcast(work_cond);
 cleanup:
 	cursor = NULL;
+	db_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+	return rc;
+}
+int queue_wait(uint64_t const time, strarg_t const URL) {
+	DB_env *db = NULL;
+	DB_txn *txn = NULL;
+	int rc = 0;
+	async_mutex_lock(wait_lock);
+	for(;;) {
+		// It was tempting to use double-checked locking
+		// or something even fancier, but for now it doesn't
+		// seem worth it.
+		uint64_t ltime, lid;
+		rc = hx_db_open(&db);
+		if(rc < 0) goto cleanup;
+		rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
+		if(rc < 0) goto cleanup;
+		rc = hx_get_latest(URL, txn, &ltime, &lid);
+		db_txn_abort(txn); txn = NULL;
+		hx_db_close(&db);
+		if(rc >= 0 && ltime+CONFIG_CRAWL_DELAY_SECONDS >= time) {
+			break;
+		}
+		if(DB_NOTFOUND != rc) goto cleanup;
+		async_cond_wait(wait_cond, wait_lock);
+	}
+cleanup:
+	async_mutex_unlock(wait_lock);
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 	return rc;
@@ -181,14 +216,14 @@ static void queue_work(void) {
 	DB_txn *txn = NULL;
 	int rc = 0;
 
-	async_mutex_lock(latest_lock);
+	async_mutex_lock(work_lock);
 	for(;;) {
 		rc = queue_peek(&then, &old_id, URL, sizeof(URL), client, sizeof(client));
 		if(DB_NOTFOUND != rc) break;
-		rc = async_cond_wait(latest_cond, latest_lock);
+		rc = async_cond_wait(work_cond, work_lock);
 		if(rc < 0) break;
 	}
-	async_mutex_unlock(latest_lock);
+	async_mutex_unlock(work_lock);
 	if(rc < 0) goto cleanup;
 
 	alogf("fetching %s\n", URL);
@@ -214,10 +249,13 @@ cleanup:
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 
-	if(rc >= 0) return;
+	if(rc < 0) {
+		alogf("Worker error: %s\n", hx_strerror(rc));
+		async_sleep(1000*5);
+		return;
+	}
 
-	alogf("Worker error: %s\n", hx_strerror(rc));
-	async_sleep(1000*5);
+	async_cond_broadcast(wait_cond);
 }
 void queue_work_loop(void *ignored) {
 	for(;;) queue_work();

@@ -14,6 +14,7 @@
 #include "db.h"
 #include "errors.h"
 #include "config.h"
+#include "queue.h"
 
 static HTTPServerRef server_raw = NULL;
 static HTTPServerRef server_tls = NULL;
@@ -21,11 +22,6 @@ static HTTPServerRef server_tls = NULL;
 // TODO: Remember that we should use the archive's URL representation in the DB.
 // http://com,example,www/ or something like that
 
-
-// TODO
-void queue_init(void);
-int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);
-void queue_work_loop(void *ignored);
 
 // TODO
 int import_init(void);
@@ -171,7 +167,7 @@ static int GET_static(HTTPConnectionRef const conn, HTTPMethod const method, str
 	// TODO: Decode obj->path.
 
 	char path[4095+1];
-	rc = path_subpath_secure("./static/", obj->path, path, sizeof(path)); // TODO
+	rc = path_subpath_secure(CONFIG_STATIC_DIR, obj->path, path, sizeof(path)); // TODO
 	if(rc < 0) return hx_httperr(rc);
 
 	strarg_t const type = path_exttype(path_extname(path));

@@ -1,2 +1,30 @@
-<div class="entry margin">A new request for this URL has been queued. Please check back soon for the latest results.</div>
+<div id="pending" class="entry margin">A new request for this URL has been queued. Please check back soon for the latest results.</div>
+<script>
+function req(URL, cb) {
+	var req = null;
+	if(window.XMLHttpRequest && !window.ActiveXObject) {
+		try { req = new XMLHttpRequest(); } catch(e) {}
+	} else if(window.ActiveXObject) {
+		try { req = new ActiveXObject("Msxml2.XMLHTTP"); } catch(e1) {
+			try { req = new ActiveXObject("Microsoft.XMLHTTP"); } catch(e2) {}
+		}
+	}
+	req.open("GET", URL, true);
+	req.onreadystatechange = function() {
+		if(4 !== req.readyState) return;
+		if(200 !== req.status) return cb(new Error("Unexpected status "+req.status), null);
+		cb(null, JSON.parse(req.responseText));
+	};
+	req.setRequestHeader("Content-Type", "text/json; charset=utf-8");
+	req.send("");
+};
+var url = document.querySelector("#url a").href;
+req("/api/enqueue/"+url, function(err, body) {
+	if(err) {
+		console.log(err);
+		return;
+	}
+	window.location = window.location;
+});
+</script>
 

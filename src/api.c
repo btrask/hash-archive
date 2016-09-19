@@ -11,6 +11,7 @@
 #include "common.h"
 #include "errors.h"
 #include "config.h"
+#include "queue.h"
 
 static yajl_gen_status yajl_gen_string2(yajl_gen hand, const char * str, size_t len) {
 	return yajl_gen_string(hand, (unsigned char const *)str, len);
@@ -81,7 +82,12 @@ cleanup:
 }
 
 int api_enqueue(HTTPConnectionRef const conn, strarg_t const URL) {
-	return UV_ENOSYS; // TODO
+	uint64_t const now = time(NULL);
+	int rc = queue_add(now, URL, ""); // TODO: client
+	if(DB_KEYEXIST == rc) rc = 0;
+	if(rc >= 0) rc = queue_wait(now, URL);
+	if(rc < 0) return rc;
+	return api_history(conn, URL);
 }
 int api_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	size_t const max = CONFIG_API_HISTORY_MAX;

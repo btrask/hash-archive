@@ -31,6 +31,7 @@
 #define CONFIG_DB_PATH "./hash-archive.db"
 
 #define CONFIG_TEMPLATE_DIR "./templates"
+#define CONFIG_STATIC_DIR "./static"
 
 #define CONFIG_IMPORT_SOCKET_PATH "./import.sock"
 

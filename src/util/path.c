@@ -49,7 +49,7 @@ int path_subpath_secure(char const *const dir, char const *const subpath, char *
 	if(strstr(subpath, "..")) return -EPERM;
 	if(strlen(dir) >= max) return -EPERM;
 
-	int rc = snprintf(out, max, "%s%s", dir, subpath);
+	int rc = snprintf(out, max, "%s/%s", dir, subpath);
 	if(rc >= max) return -ENAMETOOLONG;
 	if(rc < 0) return -errno ?: -1;
 	return 0;

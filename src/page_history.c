@@ -10,9 +10,8 @@
 #include "common.h"
 #include "errors.h"
 #include "config.h"
+#include "queue.h"
 
-// TODO
-int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client);
 
 static TemplateRef header = NULL;
 static TemplateRef footer = NULL;
