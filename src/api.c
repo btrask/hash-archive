@@ -83,11 +83,27 @@ cleanup:
 
 int api_enqueue(HTTPConnectionRef const conn, strarg_t const URL) {
 	uint64_t const now = time(NULL);
+	bool existing = false;
 	int rc = queue_add(now, URL, ""); // TODO: client
-	if(DB_KEYEXIST == rc) rc = 0;
-	if(rc >= 0) rc = queue_wait(now, URL);
+	if(DB_KEYEXIST == rc) {
+		existing = true;
+		rc = 0;
+	}
 	if(rc < 0) return rc;
-	return api_history(conn, URL);
+
+	HTTPConnectionWriteResponse(conn, 200, "OK");
+	HTTPConnectionWriteHeader(conn, "Transfer-Encoding", "chunked");
+	HTTPConnectionWriteHeader(conn, "Content-Type", "text/json; charset=utf-8");
+	HTTPConnectionBeginBody(conn);
+	if(!existing) for(;;) {
+		rc = queue_timedwait(now, URL, uv_now(async_loop) + 1000*30);
+		if(UV_ETIMEDOUT != rc) break;
+		HTTPConnectionWriteChunk(conn, (unsigned char const *)STR_LEN("\n"));
+	}
+	HTTPConnectionWriteChunk(conn, (unsigned char const *)STR_LEN("{}")); // TODO
+	HTTPConnectionWriteChunkEnd(conn);
+	HTTPConnectionEnd(conn);
+	return 0;
 }
 int api_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	size_t const max = CONFIG_API_HISTORY_MAX;

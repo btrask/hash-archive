@@ -173,7 +173,7 @@ cleanup:
 	hx_db_close(&db);
 	return rc;
 }
-int queue_wait(uint64_t const time, strarg_t const URL) {
+int queue_timedwait(uint64_t const time, strarg_t const URL, uint64_t const future) {
 	DB_env *db = NULL;
 	DB_txn *txn = NULL;
 	int rc = 0;
@@ -184,19 +184,19 @@ int queue_wait(uint64_t const time, strarg_t const URL) {
 		// seem worth it.
 		uint64_t ltime, lid;
 		rc = hx_db_open(&db);
-		if(rc < 0) goto cleanup;
+		if(rc < 0) break;
 		rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
-		if(rc < 0) goto cleanup;
+		if(rc < 0) break;
 		rc = hx_get_latest(URL, txn, &ltime, &lid);
 		db_txn_abort(txn); txn = NULL;
 		hx_db_close(&db);
 		if(rc >= 0 && ltime+CONFIG_CRAWL_DELAY_SECONDS >= time) {
 			break;
 		}
-		if(DB_NOTFOUND != rc) goto cleanup;
-		async_cond_wait(wait_cond, wait_lock);
+		if(DB_NOTFOUND != rc) break;
+		rc = async_cond_timedwait(wait_cond, wait_lock, future);
+		if(rc < 0) break;
 	}
-cleanup:
 	async_mutex_unlock(wait_lock);
 	db_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
