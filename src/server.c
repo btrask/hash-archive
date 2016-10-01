@@ -319,11 +319,6 @@ int main(void) {
 		fprintf(stderr, "Initialization error: %s\n", uv_strerror(rc));
 		return 1;
 	}
-/*	rc = tls_init();
-	if(rc < 0) {
-		fprintf(stderr, "TLS initialization error: %s\n", strerror(errno));
-		return 1;
-	}*/
 
 	// Even our init code wants to use async I/O.
 	async_spawn(STACK_DEFAULT, init, NULL);
