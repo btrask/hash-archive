@@ -26,7 +26,7 @@ static void res_json(struct response const *const res, yajl_gen const json) {
 	yajl_gen_string2(json, STR_LEN("url"));
 	yajl_gen_string2(json, res->url, strlen(res->url));
 	yajl_gen_string2(json, STR_LEN("timestamp"));
-	yajl_gen_integer(json, 1000*res->time);
+	yajl_gen_integer(json, res->time);
 	yajl_gen_string2(json, STR_LEN("status"));
 	yajl_gen_integer(json, res->status);
 	yajl_gen_string2(json, STR_LEN("type"));
