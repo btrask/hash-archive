@@ -4,6 +4,8 @@
 DESTDIR ?=
 PREFIX ?= /usr/local
 
+DB ?= leveldb
+
 ROOT_DIR := .
 BUILD_DIR := $(ROOT_DIR)/build
 SRC_DIR := $(ROOT_DIR)/src
@@ -174,11 +176,11 @@ $(DEPS_DIR)/libasync/deps/libressl-portable/crypto/.libs/libcrypto.a: | libasync
 $(DEPS_DIR)/libasync/deps/uv/.libs/libuv.a: | libasync
 .PHONY: libasync
 libasync:
-	DB=leveldb $(MAKE) -C $(DEPS_DIR)/libasync --no-print-directory
+	$(MAKE) -C $(DEPS_DIR)/libasync --no-print-directory
 
 $(DEPS_DIR)/libkvstore/build/libkvstore.a: | libkvstore
 $(DEPS_DIR)/libkvstore/deps/leveldb/libleveldb.a: | libkvstore
 .PHONY: libkvstore
 libkvstore:
-	$(MAKE) -C $(DEPS_DIR)/libkvstore --no-print-directory
+	DB=$(DB) $(MAKE) -C $(DEPS_DIR)/libkvstore --no-print-directory
 
