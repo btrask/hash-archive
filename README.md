@@ -12,6 +12,6 @@ Debian/Ubuntu dependencies: `sudo apt-get install build-essentials automake auto
 
 1. `git submodule init && git submodule update`
 2. `./configure`
-3. `DB=leveldb make`
+3. `make`
 4. `sudo make install` (also installs libressl root certs and runs setcap on binary)
 
