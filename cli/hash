@@ -1,0 +1,61 @@
+#!/usr/bin/python
+# Copyright 2016 Ben Trask
+# MIT licensed (see LICENSE for details)
+
+from __future__ import print_function
+import argparse
+import hashlib
+import binascii
+import re
+import sys
+
+parser = argparse.ArgumentParser(description="Interface with content addressable storage")
+parser.add_argument(dest="file", type=argparse.FileType("rb"))
+parser.add_argument("--verify", "-v", metavar="URI", help="expected hash URI (exit status 102 on mismatch)")
+args = parser.parse_args()
+
+algos = ["sha256", "sha512", "sha1", "md5"]
+
+def parse_uri(uri):
+	exp = re.compile(r"^hash:\/\/([\w\d.-]+)\/([0-9a-fA-F]+)(?:\?([\w\d.%+\/*=&_-]+))?(#[\w\d.%_-]+)?$", re.IGNORECASE)
+	match = exp.match(uri)
+	if not match: return None
+	return dict(
+		algo=match.group(1),
+		hash=match.group(2),
+		query=match.group(3),
+		fragment=match.group(4),
+		data=binascii.unhexlify(match.group(2)),
+		encoding="hex"
+	)
+
+def compute(file):
+	hashers = [hashlib.new(algo) for algo in algos]
+	while 1:
+		buf = args.file.read()
+		if not buf: break
+		for hasher in hashers: hasher.update(buf)
+	for hasher in hashers:
+		print("hash://"+hasher.name+"/"+hasher.hexdigest())
+
+def verify(file, uri):
+	obj = parse_uri(uri)
+	if not obj:
+		print("Error: Invalid hash URI", file=sys.stderr)
+		exit(1)
+	hasher = hashlib.new(obj["algo"])
+	while 1:
+		buf = args.file.read()
+		if not buf: break
+		hasher.update(buf)
+
+	print("hash://"+obj["algo"]+"/"+hasher.hexdigest())
+	if hasher.digest() != obj["data"]:
+		print("Error: Hash mismatch!", file=sys.stderr)
+		exit(102)
+
+if args.verify:
+	verify(args.file, args.verify)
+else:
+	compute(args.file)
+
