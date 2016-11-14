@@ -36,6 +36,7 @@ static int send_get(strarg_t const URL, strarg_t const client, HTTPConnectionRef
 	rc = rc < 0 ? rc : HTTPConnectionConnect(host->domain, host->port, secure, 0, &conn);
 	rc = rc < 0 ? rc : HTTPConnectionWriteRequest(conn, HTTP_GET, obj->path, obj->host);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "User-Agent", USER_AGENT);
+	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "Referer", URL);
 	rc = rc < 0 ? rc : HTTPConnectionWriteHeader(conn, "X-Forwarded-For", client); // TODO
 	HTTPConnectionSetKeepAlive(conn, false); // No point.
 	rc = rc < 0 ? rc : HTTPConnectionBeginBody(conn);
