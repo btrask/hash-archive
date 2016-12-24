@@ -1,6 +1,7 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#include <stdlib.h>
 #include <string.h>
 #include <async/http/status.h>
 #include <yajl/yajl_gen.h>
@@ -85,7 +86,7 @@ int api_enqueue(HTTPConnectionRef const conn, strarg_t const URL) {
 	uint64_t const now = time(NULL);
 	bool existing = false;
 	int rc = queue_add(now, URL, ""); // TODO: client
-	if(DB_KEYEXIST == rc) {
+	if(KVS_KEYEXIST == rc) {
 		existing = true;
 		rc = 0;
 	}

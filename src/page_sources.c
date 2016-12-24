@@ -1,6 +1,7 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#include <stdlib.h>
 #include <string.h>
 #include "util/strext.h"
 #include "page.h"

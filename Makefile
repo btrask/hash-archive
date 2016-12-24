@@ -102,7 +102,7 @@ STATIC_LIBS += $(DEPS_DIR)/libkvstore/build/libkvstore.a
 STATIC_LIBS += $(DEPS_DIR)/libkvstore/deps/leveldb/out-static/libleveldb.a
 STATIC_LIBS += $(DEPS_DIR)/libkvstore/deps/snappy/.libs/libsnappy.a
 STATIC_LIBS += $(DEPS_DIR)/libkvstore/deps/liblmdb/liblmdb.a
-CFLAGS += -I$(DEPS_DIR)/libkvstore/include
+CFLAGS += -I$(DEPS_DIR)/libkvstore/build/include
 LIBS += -lstdc++
 
 STATIC_LIBS += $(DEPS_DIR)/cmark/build/src/libcmark.a

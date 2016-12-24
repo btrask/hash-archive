@@ -1,7 +1,7 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
-#include <kvstore/db_base.h>
+#include <kvstore/kvs_base.h>
 #include <async/http/HTTP.h>
 #include "util/hash.h"
 #include "util/url.h"
@@ -60,7 +60,7 @@ static char const *hx_strerror(int const rc) {
 	}
 	char const *x = hash_strerror(rc);
 	if(x) return x;
-	x = db_strerror(rc);
+	x = kvs_strerror(rc);
 	if(x) return x;
 	return uv_strerror(rc);
 }

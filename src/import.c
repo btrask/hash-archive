@@ -96,7 +96,7 @@ static ssize_t read_responses(uv_stream_t *const stream, struct response *const 
 			ssize_t len = read_blob(stream, out[x].digests[i].buf, HASH_DIGEST_MAX);
 			if(len < 0) rc = len;
 			if(rc < 0) goto cleanup;
-			db_assert(len <= hash_algo_digest_len(i));
+			kvs_assert(len <= hash_algo_digest_len(i));
 			out[x].digests[i].len = len;
 		}
 		for(size_t i = HASH_ALGO_MAX; i < hcount; i++) {
@@ -118,8 +118,8 @@ static void connection(void *arg) {
 	uv_stream_t *const server = arg;
 	uv_pipe_t pipe[1];
 	uv_stream_t *const stream = (uv_stream_t *)pipe;
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
+	KVS_env *db = NULL;
+	KVS_txn *txn = NULL;
 	struct response *responses = NULL;
 	uint64_t id = 0;
 
@@ -140,7 +140,7 @@ static void connection(void *arg) {
 
 		rc = hx_db_open(&db);
 		if(rc < 0) goto cleanup;
-		rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
+		rc = kvs_txn_begin(db, NULL, KVS_RDWR, &txn);
 		if(rc < 0) goto cleanup;
 
 		for(size_t i = 0; i < count; i++) {
@@ -148,7 +148,7 @@ static void connection(void *arg) {
 			if(rc < 0) goto cleanup;
 		}
 
-		rc = db_txn_commit(txn); txn = NULL;
+		rc = kvs_txn_commit(txn); txn = NULL;
 		if(rc < 0) goto cleanup;
 		hx_db_close(&db);
 
@@ -157,7 +157,7 @@ static void connection(void *arg) {
 	}
 
 cleanup:
-	db_txn_abort(txn); txn = NULL;
+	kvs_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 	async_close((uv_handle_t *)pipe);
 	fprintf(stderr, "Import ended: %s\n", hx_strerror(rc));

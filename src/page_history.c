@@ -1,6 +1,7 @@
 // Copyright 2016 Ben Trask
 // MIT licensed (see LICENSE for details)
 
+#include <stdlib.h>
 #include <string.h>
 #include <async/http/status.h>
 #include "util/strext.h"
@@ -157,7 +158,7 @@ int page_history(HTTPConnectionRef const conn, strarg_t const URL) {
 	if(count < 1 || responses[0].time+CONFIG_CRAWL_DELAY_SECONDS < now) {
 		TemplateWriteHTTPChunk(outdated, TemplateStaticVar, &args, conn);
 		rc = queue_add(now, URL, ""); // TODO: Get client
-		if(rc < 0 && DB_KEYEXIST != rc) {
+		if(rc < 0 && KVS_KEYEXIST != rc) {
 			alogf("queue error: %s\n", hx_strerror(rc));
 		}
 	}

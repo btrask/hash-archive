@@ -49,27 +49,27 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	assert(outclient);
 	assert(clientmax > 0);
 
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
-	DB_cursor *cursor = NULL;
-	DB_range range[1];
-	DB_val key[1];
+	KVS_env *db = NULL;
+	KVS_txn *txn = NULL;
+	KVS_cursor *cursor = NULL;
+	KVS_range range[1];
+	KVS_val key[1];
 	strarg_t URL, client;
 	int rc = 0;
 
 	rc = hx_db_open(&db);
 	if(rc < 0) goto cleanup;
-	rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
+	rc = kvs_txn_begin(db, NULL, KVS_RDONLY, &txn);
 	if(rc < 0) goto cleanup;
-	rc = db_txn_cursor(txn, &cursor);
+	rc = kvs_txn_cursor(txn, &cursor);
 	if(rc < 0) goto cleanup;
 	HXTimeIDQueuedURLAndClientRange0(range);
-	DB_VAL_STORAGE(key, DB_VARINT_MAX*3)
-	db_bind_uint64(key, HXTimeIDQueuedURLAndClient);
-	db_bind_uint64(key, work_time);
-	db_bind_uint64(key, work_id+1);
-	DB_VAL_STORAGE_VERIFY(key);
-	rc = db_cursor_seekr(cursor, range, key, NULL, +1);
+	KVS_VAL_STORAGE(key, KVS_VARINT_MAX*3)
+	kvs_bind_uint64(key, HXTimeIDQueuedURLAndClient);
+	kvs_bind_uint64(key, work_time);
+	kvs_bind_uint64(key, work_id+1);
+	KVS_VAL_STORAGE_VERIFY(key);
+	rc = kvs_cursor_seekr(cursor, range, key, NULL, +1);
 	if(rc < 0) goto cleanup;
 
 	HXTimeIDQueuedURLAndClientKeyUnpack(key, txn, outtime, outid, &URL, &client);
@@ -79,11 +79,11 @@ static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *cons
 	work_id = *outid;
 cleanup:
 	cursor = NULL;
-	db_txn_abort(txn); txn = NULL;
+	kvs_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 	return rc;
 }
-static int queue_remove(DB_txn *const txn, uint64_t const time, uint64_t const id, strarg_t const URL, strarg_t const client) {
+static int queue_remove(KVS_txn *const txn, uint64_t const time, uint64_t const id, strarg_t const URL, strarg_t const client) {
 	assert(time);
 	assert(id);
 	assert(URL);
@@ -92,14 +92,14 @@ static int queue_remove(DB_txn *const txn, uint64_t const time, uint64_t const i
 	int rc = url_normalize_surt(URL, surt, sizeof(surt));
 	if(rc < 0) goto cleanup;
 
-	DB_val fwd_key[1];
+	KVS_val fwd_key[1];
 	HXTimeIDQueuedURLAndClientKeyPack(fwd_key, txn, time, id, URL, client);
-	rc = db_del(txn, fwd_key, 0);
+	rc = kvs_del(txn, fwd_key, 0);
 	if(rc < 0) goto cleanup;
 
-	DB_val rev_key[1];
+	KVS_val rev_key[1];
 	HXQueuedURLSurtAndTimeIDKeyPack(rev_key, txn, surt, time, id);
-	rc = db_del(txn, rev_key, 0);
+	rc = kvs_del(txn, rev_key, 0);
 	if(rc < 0) goto cleanup;
 cleanup:
 	return rc;
@@ -112,9 +112,9 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	assert(URL);
 	assert(client);
 	char surt[URI_MAX];
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
-	DB_cursor *cursor = NULL;
+	KVS_env *db = NULL;
+	KVS_txn *txn = NULL;
+	KVS_cursor *cursor = NULL;
 	int rc = 0;
 
 	rc = url_normalize_surt(URL, surt, sizeof(surt));
@@ -126,42 +126,42 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 
 	rc = hx_db_open(&db);
 	if(rc < 0) goto cleanup;
-	rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
+	rc = kvs_txn_begin(db, NULL, KVS_RDWR, &txn);
 	if(rc < 0) goto cleanup;
-	rc = db_txn_cursor(txn, &cursor);
+	rc = kvs_txn_cursor(txn, &cursor);
 	if(rc < 0) goto cleanup;
 
-	DB_val chk_key[1];
-	DB_range range_queued[1];
+	KVS_val chk_key[1];
+	KVS_range range_queued[1];
 	HXQueuedURLSurtAndTimeIDRange1(range_queued, txn, surt);
-	rc = db_cursor_firstr(cursor, range_queued, chk_key, NULL, -1);
+	rc = kvs_cursor_firstr(cursor, range_queued, chk_key, NULL, -1);
 	if(rc >= 0) goto cleanup; // If it's already queued, return success.
-	if(DB_NOTFOUND != rc) goto cleanup;
+	if(KVS_NOTFOUND != rc) goto cleanup;
 
-	DB_range range_crawled[1];
+	KVS_range range_crawled[1];
 	HXURLSurtAndTimeIDRange1(range_crawled, txn, surt);
-	rc = db_cursor_firstr(cursor, range_crawled, chk_key, NULL, -1);
+	rc = kvs_cursor_firstr(cursor, range_crawled, chk_key, NULL, -1);
 	if(rc >= 0) {
 		strarg_t x;
 		uint64_t ltime, lid;
 		HXURLSurtAndTimeIDKeyUnpack(chk_key, txn, &x, &ltime, &lid);
 		assert(0 == strcmp(x, surt));
 		rc = ltime+CONFIG_CRAWL_DELAY_SECONDS < time ?
-			DB_NOTFOUND : DB_KEYEXIST;
+			KVS_NOTFOUND : KVS_KEYEXIST;
 	}
-	if(DB_NOTFOUND != rc) goto cleanup;
+	if(KVS_NOTFOUND != rc) goto cleanup;
 
-	DB_val fwd_key[1];
+	KVS_val fwd_key[1];
 	HXTimeIDQueuedURLAndClientKeyPack(fwd_key, txn, time, id, URL, client);
-	rc = db_put(txn, fwd_key, NULL, 0); // DB_NOOVERWRITE_FAST
+	rc = kvs_put(txn, fwd_key, NULL, 0); // KVS_NOOVERWRITE_FAST
 	if(rc < 0) goto cleanup;
 
-	DB_val rev_key[1];
+	KVS_val rev_key[1];
 	HXQueuedURLSurtAndTimeIDKeyPack(rev_key, txn, surt, time, id);
-	rc = db_put(txn, rev_key, NULL, 0);
+	rc = kvs_put(txn, rev_key, NULL, 0);
 	if(rc < 0) goto cleanup;
 
-	rc = db_txn_commit(txn); txn = NULL;
+	rc = kvs_txn_commit(txn); txn = NULL;
 	if(rc < 0) goto cleanup;
 	hx_db_close(&db);
 
@@ -169,13 +169,13 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	async_cond_broadcast(work_cond);
 cleanup:
 	cursor = NULL;
-	db_txn_abort(txn); txn = NULL;
+	kvs_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 	return rc;
 }
 int queue_timedwait(uint64_t const time, strarg_t const URL, uint64_t const future) {
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
+	KVS_env *db = NULL;
+	KVS_txn *txn = NULL;
 	int rc = 0;
 	async_mutex_lock(wait_lock);
 	for(;;) {
@@ -185,21 +185,21 @@ int queue_timedwait(uint64_t const time, strarg_t const URL, uint64_t const futu
 		uint64_t ltime, lid;
 		rc = hx_db_open(&db);
 		if(rc < 0) break;
-		rc = db_txn_begin(db, NULL, DB_RDONLY, &txn);
+		rc = kvs_txn_begin(db, NULL, KVS_RDONLY, &txn);
 		if(rc < 0) break;
 		rc = hx_get_latest(URL, txn, &ltime, &lid);
-		db_txn_abort(txn); txn = NULL;
+		kvs_txn_abort(txn); txn = NULL;
 		hx_db_close(&db);
 		if(rc >= 0) {
 			if(ltime+CONFIG_CRAWL_DELAY_SECONDS >= time) break;
-			rc = DB_NOTFOUND;
+			rc = KVS_NOTFOUND;
 		}
-		if(DB_NOTFOUND != rc) break;
+		if(KVS_NOTFOUND != rc) break;
 		rc = async_cond_timedwait(wait_cond, wait_lock, future);
 		if(rc < 0) break;
 	}
 	async_mutex_unlock(wait_lock);
-	db_txn_abort(txn); txn = NULL;
+	kvs_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 	return rc;
 }
@@ -213,14 +213,14 @@ static void queue_work(void) {
 	struct response res[1];
 	uint64_t new_id;
 
-	DB_env *db = NULL;
-	DB_txn *txn = NULL;
+	KVS_env *db = NULL;
+	KVS_txn *txn = NULL;
 	int rc = 0;
 
 	async_mutex_lock(work_lock);
 	for(;;) {
 		rc = queue_peek(&then, &old_id, URL, sizeof(URL), client, sizeof(client));
-		if(DB_NOTFOUND != rc) break;
+		if(KVS_NOTFOUND != rc) break;
 		rc = async_cond_wait(work_cond, work_lock);
 		if(rc < 0) break;
 	}
@@ -237,17 +237,17 @@ static void queue_work(void) {
 
 	rc = hx_db_open(&db);
 	if(rc < 0) goto cleanup;
-	rc = db_txn_begin(db, NULL, DB_RDWR, &txn);
+	rc = kvs_txn_begin(db, NULL, KVS_RDWR, &txn);
 	if(rc < 0) goto cleanup;
 	rc = queue_remove(txn, then, old_id, URL, client);
 	if(rc < 0) goto cleanup;
 	rc = hx_response_add(txn, res, new_id);
 	if(rc < 0) goto cleanup;
-	rc = db_txn_commit(txn); txn = NULL;
+	rc = kvs_txn_commit(txn); txn = NULL;
 	if(rc < 0) goto cleanup;
 
 cleanup:
-	db_txn_abort(txn); txn = NULL;
+	kvs_txn_abort(txn); txn = NULL;
 	hx_db_close(&db);
 
 	if(rc < 0) {
