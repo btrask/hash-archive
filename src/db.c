@@ -22,7 +22,7 @@ int hx_db_load(void) {
 	size_t mapsize = 1024ull*1024*1024*64; // 64GB
 	KVS_env *db = NULL;
 	int rc = 0;
-	rc = kvs_env_create(&db);
+	rc = kvs_env_create_base("leveldb", &db);
 	if(rc < 0) goto cleanup;
 	rc = kvs_env_set_config(db, KVS_CFG_MAPSIZE, &mapsize);
 	if(rc < 0) goto cleanup;
