@@ -101,9 +101,26 @@ int api_enqueue(HTTPConnectionRef const conn, strarg_t const URL) {
 		if(UV_ETIMEDOUT != rc) break;
 		HTTPConnectionWriteChunk(conn, (unsigned char const *)STR_LEN("\n"));
 	}
-	HTTPConnectionWriteChunk(conn, (unsigned char const *)STR_LEN("{}")); // TODO
+
+	yajl_gen json = NULL;
+	struct response res[1];
+	ssize_t const count = hx_get_history(URL, res, 1);
+	if(1 != count) rc = KVS_NOTFOUND;
+	if(rc < 0) goto cleanup;
+
+	json = yajl_gen_alloc(NULL);
+	if(!json) rc = UV_ENOMEM;
+	if(rc < 0) goto cleanup;
+	yajl_gen_config(json, yajl_gen_print_callback, yajl_print_cb, conn);
+	yajl_gen_config(json, yajl_gen_beautify, 1);
+
+	res_json(res, json);
+
+cleanup:
 	HTTPConnectionWriteChunkEnd(conn);
 	HTTPConnectionEnd(conn);
+	if(json) yajl_gen_free(json);
+	json = NULL;
 	return 0;
 }
 int api_history(HTTPConnectionRef const conn, strarg_t const URL) {
