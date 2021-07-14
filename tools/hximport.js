@@ -20,11 +20,11 @@ function write_uint16(sock, val) {
 }
 function write_uint64(sock, val) {
 	var buf;
-	if(null === val) {
+	if(null === val || -1 === val) {
 		buf = new Buffer([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
 	} else {
 		buf = new Buffer(8);
-		buf.writeUIntBE(val, 0, 8);
+		buf.writeUIntBE(val, 2, 6);
 	}
 	return sock.write(buf);
 }
