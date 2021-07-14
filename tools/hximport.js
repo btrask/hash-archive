@@ -41,18 +41,23 @@ function write_blob(sock, buf) {
 	return sock.write(buf);
 }
 
+function expect(obj, prop) {
+	if(Object.prototype.hasOwnProperty.call(obj, prop)) throw new TypeError("Missing property "+prop);
+	return obj[prop];
+}
+
 hximport.ALGOS = ALGOS;
 hximport.write_response = function(sock, res) {
-	var blocking = false;
-	blocking = !write_uint64(sock, res.time) || blocking;
-	blocking = !write_string(sock, res.url) || blocking;
-	blocking = !write_uint64(sock, res.status+0xffff) || blocking;
-	blocking = !write_string(sock, res.type) || blocking;
-	blocking = !write_uint64(sock, res.length) || blocking;
-	blocking = !write_uint16(sock, ALGO_MAX) || blocking;
+	var go = true;
+	go = write_uint64(sock, expect(res, "time")) && go;
+	go = write_string(sock, expect(res, "url")) && go;
+	go = write_uint64(sock, expect(res, "status")+0xffff) && go;
+	go = write_string(sock, expect(res, "type")) && go;
+	go = write_uint64(sock, expect(res, "length")) && go;
+	go = write_uint16(sock, ALGO_MAX) && go;
 	for(var i = 0; i < ALGO_MAX; i++) {
-		blocking = !write_blob(sock, res.digests[ALGOS[i]]) || blocking;
+		go = write_blob(sock, res.digests[ALGOS[i]]) && go;
 	}
-	return !blocking;
+	return go;
 }
 
