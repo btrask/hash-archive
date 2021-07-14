@@ -42,7 +42,7 @@ function write_blob(sock, buf) {
 }
 
 function expect(obj, prop) {
-	if(Object.prototype.hasOwnProperty.call(obj, prop)) throw new TypeError("Missing property "+prop);
+	if(!Object.prototype.hasOwnProperty.call(obj, prop)) throw new TypeError("Missing property "+prop);
 	return obj[prop];
 }
 
