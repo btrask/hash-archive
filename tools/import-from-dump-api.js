@@ -14,6 +14,12 @@ var start = parseInt(process.argv[3] || "1", 10);
 var end = 1000000000000;
 getNext();
 
+var count = 0;
+var total = 0;
+var timer = setInterval(function() {
+	console.log('Importing '+count+' per second ('+total+' total; '+start+' timestamp)');
+	count = 0;
+}, 1000);
 
 function getNext() {
 
@@ -38,6 +44,7 @@ req.on('response', function(arg) {
 		parser.write(buf);
 	});
 	res.on('end', function() {
+		clearInterval(timer);
 		console.log('Dump ended?');
 //		parser.end();
 	});
@@ -68,6 +75,8 @@ parser.onValue = function(val) {
 	}
 
 	start = Math.max(start, val.timestamp);
+	count++;
+	total++;
 };
 
 }
