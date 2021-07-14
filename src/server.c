@@ -213,7 +213,8 @@ static void listener(void *ctx, HTTPServerRef const server, HTTPConnectionRef co
 	strarg_t const host = HTTPHeadersGet(headers, "host");
 	host_t obj[1];
 	rc = host_parse(host, obj);
-	if(	0 != strcasecmp(obj->domain, CONFIG_HOSTNAME) &&
+	if(	CONFIG_HOSTNAME_EXPECTED &&
+		0 != strcasecmp(obj->domain, CONFIG_HOSTNAME_EXPECTED) &&
 		0 != strcasecmp(obj->domain, "localhost")) rc = UV_EACCES;
 	if(rc < 0) goto cleanup;
 

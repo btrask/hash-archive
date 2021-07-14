@@ -71,7 +71,7 @@ static int template_var(void *const actx, char const *const var, TemplateWriteFn
 	}
 
 	if(0 == strcmp(var, "host")) {
-		char const *host = CONFIG_HOSTNAME;
+		char const *host = CONFIG_HOSTNAME_PUBLIC;
 		assert(host);
 		return wr(wctx, uv_buf_init((char *)host, strlen(host)));
 	}

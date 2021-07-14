@@ -8,7 +8,10 @@
 
 // TODO: Proper getenv() based configuration?
 
-#define CONFIG_HOSTNAME "hash-archive.org"
+// The domain expected for incoming requests to prevent DNS rebinding attacks. NULL to allow any host.
+#define CONFIG_HOSTNAME_EXPECTED "hash-archive.org"
+// The domain reported by the server to clients.
+#define CONFIG_HOSTNAME_PUBLIC "hash-archive.org"
 
 #define CONFIG_SERVER_RAW_ADDR NULL
 #define CONFIG_SERVER_RAW_PORT 8000 // 0 for disabled
