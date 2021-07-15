@@ -8,6 +8,20 @@ var JSONParse = require('jsonparse');
 var hx = require('./hximport');
 
 
+log("Importer started");
+process.on("exit", function() {
+        log("Importer exiting");
+});
+process.on("uncaughtException", function(err) {
+        log("Importer error");
+	console.log(err);
+        throw err;
+});
+function log(str) {
+        console.log((new Date).toISOString()+": "+str);
+}
+
+
 var local = net.createConnection("./import.sock");
 var remote = new URL(process.argv[2]);
 var start = parseInt(process.argv[3] || "1", 10);
@@ -17,7 +31,7 @@ getNext();
 var count = 0;
 var total = 0;
 var timer = setInterval(function() {
-	console.log('Importing '+count+' per second ('+total+' total; '+start+' timestamp)');
+	log('Importing '+count+' per second ('+total+' total; '+start+' timestamp)');
 	count = 0;
 }, 1000);
 
@@ -27,7 +41,7 @@ var parser = new JSONParse();
 
 remote.pathname = '/api/dump/';
 remote.search = '?start='+start+'&duration='+(end-start);
-console.log('Connecting to '+remote.href);
+log('Connecting to '+remote.href);
 
 var req = http.get(remote.href);
 var res = null;
@@ -36,7 +50,7 @@ req.on('error', function(err) {
 });
 req.on('response', function(arg) {
 	res = arg;
-//	console.log(res.statusCode);
+//	log(res.statusCode);
 	if(200 != res.statusCode) throw new Error('Bad response status '+res.statusCode);
 //	res.pipe(process.stdout);
 	res.on('data', function(buf) {
@@ -45,7 +59,7 @@ req.on('response', function(arg) {
 	});
 	res.on('end', function() {
 		clearInterval(timer);
-		console.log('Dump ended?');
+		log('Dump ended?');
 //		parser.end();
 	});
 });
@@ -65,7 +79,7 @@ parser.onValue = function(val) {
 		var hash = /^([^-]+)-(.*)$/.exec(val.hashes[i]);
 		obj.digests[hash[1]] = Buffer.from(hash[2], 'base64');
 	}
-//	console.log(obj);
+//	log(obj);
 	var go = hx.write_response(local, obj);
 	if(!go) {
 		res.pause();
