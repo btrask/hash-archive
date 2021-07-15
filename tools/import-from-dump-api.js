@@ -46,6 +46,8 @@ log('Connecting to '+remote.href);
 var req = http.get(remote.href);
 var res = null;
 req.on('error', function(err) {
+	log('Request error');
+	console.log(err);
 	getNext();
 });
 req.on('response', function(arg) {
@@ -53,6 +55,11 @@ req.on('response', function(arg) {
 //	log(res.statusCode);
 	if(200 != res.statusCode) throw new Error('Bad response status '+res.statusCode);
 //	res.pipe(process.stdout);
+	res.on('error', function(err) {
+		log('Response error');
+		console.log(err);
+		getNext();
+	});
 	res.on('data', function(buf) {
 //		process.stdout.write(buf);
 		parser.write(buf);
