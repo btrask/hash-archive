@@ -17,14 +17,15 @@ process.on("uncaughtException", function(err) {
 	console.log(err);
         throw err;
 });
+process.on('SIGHUP', log);
 function log(str) {
         console.log((new Date).toISOString()+": "+str);
 }
 
 
-var local = net.createConnection("./import.sock");
 var remote = new URL(process.argv[2]);
 var start = parseInt(process.argv[3] || "1", 10);
+var local = process.argv[4] || './import.sock';
 var end = 1000000000000;
 getNext();
 
@@ -54,14 +55,12 @@ req.on('response', function(arg) {
 	res = arg;
 //	log(res.statusCode);
 	if(200 != res.statusCode) throw new Error('Bad response status '+res.statusCode);
-//	res.pipe(process.stdout);
 	res.on('error', function(err) {
 		log('Response error');
 		console.log(err);
 		getNext();
 	});
 	res.on('data', function(buf) {
-//		process.stdout.write(buf);
 		parser.write(buf);
 	});
 	res.on('end', function() {
@@ -71,6 +70,17 @@ req.on('response', function(arg) {
 	});
 });
 req.end();
+
+
+var socket = net.createConnection(local);
+socket.on('error', function(err) {
+	log('Socket error');
+	console.log(err);
+	req.destroy();
+	if(res) res.destroy();
+	getNext();
+});
+
 
 parser.onValue = function(val) {
 	if(this.stack.length != 1) return;
@@ -87,10 +97,10 @@ parser.onValue = function(val) {
 		obj.digests[hash[1]] = Buffer.from(hash[2], 'base64');
 	}
 //	log(obj);
-	var go = hx.write_response(local, obj);
+	var go = hx.write_response(socket, obj);
 	if(!go) {
 		res.pause();
-		local.once('drain', function() {
+		socket.once('drain', function() {
 			res.resume();
 		});
 	}
