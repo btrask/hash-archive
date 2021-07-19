@@ -84,6 +84,7 @@ socket.on('error', function(err) {
 
 parser.onValue = function(val) {
 	if(this.stack.length != 1) return;
+	this.value = []; // Work around memory leak.
 	var obj = {
 		time: val.timestamp,
 		url: val.url,
