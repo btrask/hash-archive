@@ -59,7 +59,8 @@ void queue_log(size_t const n) {
 
 	HXTimeIDQueuedURLAndClientRange0(range);
 	rc = kvs_cursor_firstr(cursor, range, key, NULL, +1);
-	for(size_t i = 0; i < n; i++) {
+	size_t i = 0;
+	for(; i < n; i++) {
 		if(KVS_NOTFOUND == rc) break;
 		if(rc < 0) goto cleanup;
 
