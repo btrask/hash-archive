@@ -254,6 +254,8 @@ static void init(void *ignore) {
 		alogf("Database load error: %s\n", hx_strerror(rc));
 		goto cleanup;
 	}
+	queue_log(10);
+
 
 	queue_init();
 	for(size_t i = 0; i < CONFIG_QUEUE_WORKERS; i++) {

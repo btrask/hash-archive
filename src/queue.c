@@ -41,6 +41,52 @@ void queue_init(void) {
 }
 
 
+void queue_log(size_t const n) {
+	KVS_env *db = NULL;
+	KVS_txn *txn = NULL;
+	KVS_cursor *cursor = NULL;
+	KVS_range range[1];
+	KVS_val key[1];
+	strarg_t URL, client;
+	int rc = 0;
+
+	rc = hx_db_open(&db);
+	if(rc < 0) goto cleanup;
+	rc = kvs_txn_begin(db, NULL, KVS_RDONLY, &txn);
+	if(rc < 0) goto cleanup;
+	rc = kvs_txn_cursor(txn, &cursor);
+	if(rc < 0) goto cleanup;
+
+	HXTimeIDQueuedURLAndClientRange0(range);
+	rc = kvs_cursor_firstr(cursor, range, key, NULL, +1);
+	for(size_t i = 0; i < n; i++) {
+		if(KVS_NOTFOUND == rc) break;
+		if(rc < 0) goto cleanup;
+
+		uint64_t time = 0;
+		uint64_t id = 0;
+		strarg_t URL = NULL;
+		strarg_t client = NULL;
+		HXTimeIDQueuedURLAndClientKeyUnpack(key, txn, &time, &id, &URL, &client);
+		alogf("Queue %zu (%llu): '%s' for '%s'", i+1, (unsigned long long)time, URL, client);
+
+		rc = kvs_cursor_nextr(cursor, range, key, NULL, +1);
+	}
+
+	size_t count = 0;
+	rc = kvs_countr(txn, range, &count);
+	alogf("Logged %zu of %zu queued URLs", i, count);
+
+cleanup:
+	cursor = NULL;
+	kvs_txn_abort(txn); txn = NULL;
+	hx_db_close(&db);
+	if(rc) {
+		alogf("Queue log error %s", kvs_strerror(rc));
+	}
+}
+
+
 static int queue_peek(uint64_t *const outtime, uint64_t *const outid, char *const outURL, size_t const urlmax, char *const outclient, size_t const clientmax) {
 	assert(outtime);
 	assert(outid);
@@ -165,7 +211,7 @@ int queue_add(uint64_t const time, strarg_t const URL, strarg_t const client) {
 	if(rc < 0) goto cleanup;
 	hx_db_close(&db);
 
-	alogf("enqueued %s (%s)\n", URL, hx_strerror(rc));
+	alogf("Enqueued %s (%s)\n", URL, hx_strerror(rc));
 	async_cond_broadcast(work_cond);
 cleanup:
 	cursor = NULL;
